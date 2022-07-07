@@ -66,3 +66,5 @@
 `define LOGICAL         4'b1011
 `define LOGICAL_CONST   4'b1100
 
+//Register file related macros
+`define RF_DATA_WIDTH 8

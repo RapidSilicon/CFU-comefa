@@ -23,10 +23,10 @@ module swizzle_dram_to_cram(
   //memory controller interface - data comes in
   input      [`MEM_CTRL_DWIDTH-1:0] mem_ctrl_data_in,
   //interface to the compute ram - data goes out
-  output     [`RAM_PORT_DWIDTH-1:0] ram_data_out,
+  output reg [`RAM_PORT_DWIDTH-1:0] ram_data_out,
   output reg [`RAM_PORT_AWIDTH-1:0] ram_addr,
   output reg                        ram_we,
-  output reg [31:0]                 ram_num
+  output reg [15:0]                 ram_num
 );
 
 //when direction_of_dataflow is 0, that means
@@ -44,11 +44,12 @@ module swizzle_dram_to_cram(
 //reg [`LOG_COUNT_TO_SWITCH_BUFFERS-1:0] counter;
 
 always @(posedge clk) begin
-  if (resetn == 1'b0) begin
+  if (~resetn) begin
     //counter  <= 0;
     ram_we <= 0;
-    ram_addr <= `RAM_START_ADDR;
-    ram_num <= `RAM_START_NUM;
+    ram_addr <= `RAM_START_ADDR-1;
+    ram_num <= `RAM_START_NUM-1;
+    ram_data_out <= 0;
     //direction_of_dataflow <= 0;
   end 
   else if (data_valid) begin
@@ -61,6 +62,7 @@ always @(posedge clk) begin
     else begin
 	    ram_addr <= ram_addr + 1;
     end
+    ram_data_out <= mem_ctrl_data_in;
     //if (counter==`COUNT_TO_SWITCH_BUFFERS) begin
     //  direction_of_dataflow <= ~direction_of_dataflow;
     //  counter <= 0;
@@ -74,7 +76,7 @@ end
 //wire [`RAM_PORT_DWIDTH-1:0] data_out_ping;
 //wire [`RAM_PORT_DWIDTH-1:0] data_out_pong;
 //assign ram_data_out = direction_of_dataflow ? data_out_ping : data_out_pong;
-assign ram_data_out = mem_ctrl_data_in;
+//assign ram_data_out = mem_ctrl_data_in;
 
 //we are faning out the mem_ctrl_data_in to both buffers
 //since we don't stop clock, does this mean that the data in the buffers

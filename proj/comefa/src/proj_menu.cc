@@ -30,10 +30,10 @@ void do_hello_world(void) { puts("Hello, World!!!\n"); }
 void do_exercise_cfu_op0(void) {
   puts("\nExercise CFU Op0 aka ADD\n");
   int cfu;
-  cfu = cfu_op0(1, 0, 0); //dummy //funct7 (first arg) is 1
+  cfu = cfu_op0(1, 0, 0); //long reset//funct7 (first arg) is 1
   int count = 0;
-  for (int a = 0; a < 5; a += 1) {
-    for (int b = 0; b < 5; b += 1) {
+  for (int a = 1; a <= 5; a += 1) {
+    for (int b = 1; b <= 5; b += 1) {
       cfu = cfu_op0(0, a, b);
       printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, b, a + b, cfu);
       //if (cfu != a + b) {
@@ -165,9 +165,10 @@ void do_exercise_cfu_op6(void) {
   puts("\nExercise CFU Op6 aka Read from Comefa RAM\n");
   int count = 0;
   int num_elements_to_read = 100;
-  for (int a = 0x0; a < num_elements_to_read; a += 0x1) {
+  int starting_addr = 10;
+  for (int a = 0x0; a < 200; a += 0x1) {
       //int expected = a;
-      int cfu = cfu_op6(0, 0, num_elements_to_read);
+      int cfu = cfu_op6(0, starting_addr, num_elements_to_read);
       printf("Read data %08x\n", cfu);
       //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
       //if (cfu != expected) {
@@ -221,6 +222,36 @@ void do_exercise_cfu_op7_check(void) {
   //printf("Performed %d comparisons", count);
 }
 
+void do_exercise_cfu_op7_write_rf(void) {
+  puts("\nExercise CFU Op7_write_rf aka Write RF\n");
+  //int count = 0;
+  //for (int a = 0x0; a < 0x64; a += 0x1) {
+      int expected = 0xffffffff;
+      int cfu;
+      cfu = cfu_op7(2, 12, 0); 
+      if (cfu != expected) {
+        printf("\n***FAIL\n");
+      }
+      cfu = cfu_op7(2, 13, 1); 
+      if (cfu != expected) {
+        printf("\n***FAIL\n");
+      }
+      cfu = cfu_op7(2, 14, 2); 
+      if (cfu != expected) {
+        printf("\n***FAIL\n");
+      }
+      cfu = cfu_op7(2, 15, 3); 
+      if (cfu != expected) {
+        printf("\n***FAIL\n");
+      }
+      printf("Got result %08x after starting execution\n", cfu);
+      //printf("Read data %08x from address %08x\n", cfu, a);
+      //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
+      //count++;
+  //}
+  //printf("Performed %d comparisons", count);
+}
+
 struct Menu MENU = {
     "Project Menu",
     "project",
@@ -234,6 +265,7 @@ struct Menu MENU = {
         MENU_ITEM('6', "exercise cfu op6 - read comefa", do_exercise_cfu_op6),
         MENU_ITEM('7', "exercise cfu op7 - start execution", do_exercise_cfu_op7_start),
         MENU_ITEM('8', "exercise cfu op7 - check status of execution", do_exercise_cfu_op7_check),
+        MENU_ITEM('9', "exercise cfu op7 - Set registers", do_exercise_cfu_op7_write_rf),
         MENU_ITEM('h', "say Hello", do_hello_world),
         MENU_END,
     },
