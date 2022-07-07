@@ -145,8 +145,8 @@ void do_exercise_cfu_op5(void) {
       int expected = 0xffffffff;
       //The data width here is 40 bits. And we are streaming data in, so there
       //is no address to be sent. The address is incremented in the hardware itself.
-      unsigned int a_lower = a;
-      unsigned int a_higher = a>>32; //Only 8 bits will be valid
+      unsigned int a_lower = ~a;
+      unsigned int a_higher = ~(a>>32); //Only 8 bits will be valid
       int cfu = cfu_op5(0, a_lower, a_higher);
       printf("Writing data %08x, %08x\n", a_higher, a_lower);
       printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a_higher, a_lower, expected, cfu);

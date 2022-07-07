@@ -16,8 +16,9 @@
 `include "dpram.v"
 `include "controller.v"
 `include "comefa.v"
-`include "swizzle.d2c.passthrough.v"
-`include "swizzle.c2d.passthrough.v"
+`include "buffers.v"
+`include "swizzle.d2c.only_top.v"
+`include "swizzle.c2d.only_top.v"
 `include "rf.v"
 
 `define WRITE_TO_INST_RAM 7'd3
