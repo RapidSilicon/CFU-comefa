@@ -46,6 +46,7 @@ void do_exercise_cfu_op0(void) {
   printf("Performed %d comparisons", count);
 }
 
+/*
 // Test template instruction
 void do_exercise_cfu_op1(void) {
   puts("\nExercise CFU Op1 aka SWAP\n");
@@ -94,6 +95,7 @@ void do_exercise_cfu_op2(void) {
   }
   printf("Performed %d comparisons", count);
 }
+*/
 
 // Test template instruction
 void do_exercise_cfu_op3(void) {
@@ -141,22 +143,68 @@ void do_exercise_cfu_op5(void) {
   int count = 0;
   //Taking a as long int (64 bits).
   //But only 40 bits will be valid.
-  for (unsigned long long a = 0; a < 1000; a += 1) {
+
+  //Let's say we want to multiply two arrays. Each array has 160x4 elements.
+  //Each element is 8 bits. 
+  //Array 1 is called "A" and Array 2 is called "B".
+  //We can send 40 bits at a time. So, we can actually A and B together.
+
+  //40 bits are real data. We have 64 bits. So, we are left with 24 bits.
+  //Let's send the address of the row we need to write to.
+  //Row addresses are 7 bits.
+
+  //Say, we want the data to be located at row address 4.
+  unsigned int row_addr = 3; //we increment in the loop
+  unsigned int ram_addr = row_addr<<2;     //need to shift left by 2 to get from row address
+                                           //to normal addr coz the column muxing factor is 4.
+
+  unsigned char A[160*4];
+  unsigned char B[160*4];
+
+  for (unsigned int i=0; i<160*4; i++) {
+    A[i] = ~i;
+    B[i] = ~i+100;
+  }
+
+  for (unsigned int i = 0; i < 160*4; i += 1) {
       int expected = 0xffffffff;
-      //The data width here is 40 bits. And we are streaming data in, so there
-      //is no address to be sent. The address is incremented in the hardware itself.
-      unsigned int a_lower = ~a;
-      unsigned int a_higher = ~(a>>32); //Only 8 bits will be valid
-      int cfu = cfu_op5(0, a_lower, a_higher);
-      printf("Writing data %08x, %08x\n", a_higher, a_lower);
-      printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a_higher, a_lower, expected, cfu);
+      
+      //We send 8 bits of an element of A and 8 bits of an element of B in the lower part of the data
+      //(actually the lower 40 bits).
+      //When the data gets transposed, the A bits and B bits will be in consecutive rows.
+      unsigned int lower = (B[i]<<8) |  A[i];
+
+
+      if ((i>0) && (i%160==0)) {
+        ram_addr = ram_addr + (1<<9); //the 1<<9 is to change the higher order bits
+                                      //that decide which RAM the data goes to. 
+                                      //after every 160 columns, we want to move to
+                                      //the next ram.
+      }
+
+      //We send the row address in the upper part of the data (bits 47:41).
+      //need to shift left by 8 to get to bit 
+      //position 40 in the concatenated {higher,lower} value.
+      unsigned int higher = ram_addr<<8; 
+
+      int cfu;
+      if ((i>0) && (i%159==0)) {
+        cfu = cfu_op5(1, lower, higher); //set funct7 to 1 to indicate this is the last
+      }
+      else {
+        cfu = cfu_op5(0, lower, higher);
+      }
+      printf("Writing data %08x at ram address %08x (higher =%08x)\n", lower, ram_addr, higher);
+      printf("A: %08x B:%08x expected=%08x cfu= %08x\n", A[i], B[i], expected, cfu);
       //if (cfu != expected) {
       //  printf("\n***FAIL\n");
       //  return;
       //}
       count++;
   }
-  printf("Performed %d comparisons", count);
+  printf("Sent %d values", count);
+
+
 }
 
 //TODO: This will work only when swizzle_cram_to_dram is instantiated in the cfu
@@ -256,9 +304,7 @@ struct Menu MENU = {
     "Project Menu",
     "project",
     {
-        MENU_ITEM('0', "exercise cfu op0", do_exercise_cfu_op0),
-        MENU_ITEM('1', "exercise cfu op1", do_exercise_cfu_op1),
-        MENU_ITEM('2', "exercise cfu op2", do_exercise_cfu_op2),
+        MENU_ITEM('0', "exercise cfu op0 - reset and test", do_exercise_cfu_op0),
         MENU_ITEM('3', "exercise cfu op3 - write iram", do_exercise_cfu_op3),
         MENU_ITEM('4', "exercise cfu op4 - read iram", do_exercise_cfu_op4),
         MENU_ITEM('5', "exercise cfu op5 - write comefa", do_exercise_cfu_op5),

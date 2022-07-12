@@ -68,3 +68,6 @@
 
 //Register file related macros
 `define RF_DATA_WIDTH 8
+
+`define NUM_CRAMS 4
+`define LOG_NUM_CRAMS 2

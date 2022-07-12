@@ -6,7 +6,6 @@
 `define RAM_PORT_AWIDTH 9
 `define NUM_BUFFERS     80
 `define LOG_NUM_BUFFERS 7
-`define RAM_START_ADDR        9'h0
 `define COUNT_TO_SWITCH_BUFFERS 40
 `define LOG_COUNT_TO_SWITCH_BUFFERS 6
 `define RAM_NUM_WORDS 512
@@ -20,11 +19,12 @@ module swizzle_dram_to_cram(
   input  resetn,
   //memory controller interface - data comes in
   input      [`MEM_CTRL_DWIDTH-1:0] mem_ctrl_data_in,
+  input      mem_ctrl_data_last,
   //interface to the compute ram - data goes out
+  input      [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_start_addr,
   output     [`RAM_PORT_DWIDTH-1:0] ram_data_out,
-  output reg [`RAM_PORT_AWIDTH-1:0] ram_addr,
-  output reg                        ram_we,
-  output reg [15:0]                 ram_num
+  output reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr,
+  output reg                        ram_we
 );
 
 //when direction_of_dataflow is 0, that means
@@ -39,57 +39,171 @@ reg direction_of_dataflow;
 wire opp_direction_of_dataflow;
 assign opp_direction_of_dataflow = ~direction_of_dataflow;
 
-reg [`LOG_COUNT_TO_SWITCH_BUFFERS-1:0] counter;
+reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] in_data_counter;
+reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter;
+reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter_snap;
+      
+/*
 reg first_time_wait;
 reg last_part;
 
 always @(posedge clk) begin
   if (~resetn) begin
-    counter  <= 0;
+    in_data_counter  <= 0;
+    out_data_counter  <= 0;
     ram_we <= 0;
-    ram_addr <= `RAM_START_ADDR-1;
     direction_of_dataflow <= 0;
     first_time_wait <= 0;
-    ram_num <= `RAM_START_NUM-1;
+    last_part <= 0;
   end 
   else if (data_valid || last_part) begin
-    counter <= counter + 1;
+    if (~last_part) begin
+      in_data_counter <= in_data_counter + 1;
+    end
     if (first_time_wait) begin
       ram_we <= 1'b1;
-
-      if(ram_addr==(`RAM_NUM_WORDS-1)) begin
-        ram_addr <= `RAM_START_ADDR;
-        ram_num <= ram_num+1;
-      end
-      else begin
-	      ram_addr <= ram_addr + 1;
-      end
+      out_data_counter <= out_data_counter + 1;
+	    ram_addr <= ram_addr + 1;
     end
-    if (counter==(`COUNT_TO_SWITCH_BUFFERS)) begin
+    if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS)) begin
       direction_of_dataflow <= ~direction_of_dataflow;
-      counter <= 0;
     end
-    if (counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
+    if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS)) begin
+      out_data_counter <= 0;
+    end
+    if (in_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS)) begin
+      direction_of_dataflow <= ~direction_of_dataflow;
+      in_data_counter <= 0;
+    end
+    if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
       first_time_wait <= 1;
       ram_we <= 1'b1;
+      ram_addr <= ram_start_addr-1;
+      out_data_counter <= out_data_counter+1;
+    end
+    if (((in_data_counter-out_data_counter)<(`COUNT_TO_SWITCH_BUFFERS-1)) && ((in_data_counter-out_data_counter)!=0)) begin
+      last_part <= 1;
     end
   end    
+end
+*/
+
+reg flushed;
+reg [1:0] write_state;
+always @(posedge clk) begin
+  if (~resetn) begin
+    in_data_counter  <= 0;
+    direction_of_dataflow <= 0;
+    write_state <= 0;
+  end
   else begin
-    ram_we <= 1'b1;
+    case(write_state)
+    0: begin
+      if (data_valid && mem_ctrl_data_last) begin
+        in_data_counter <= in_data_counter + 1;
+        write_state <= 1;
+        //in_data_counter stays wherever it is
+      end
+      else if (data_valid) begin
+        write_state <= 0;
+        if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
+          direction_of_dataflow <= ~direction_of_dataflow;
+        end
+        if (in_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+          direction_of_dataflow <= ~direction_of_dataflow;
+          in_data_counter <= 0;
+        end
+        else begin
+          in_data_counter <= in_data_counter + 1;
+        end
+      end
+    end
+
+    1:  begin
+      if (flushed) begin
+        direction_of_dataflow <= 0;
+        in_data_counter <= 0;
+        write_state <= 0;
+      end
+      else begin
+        write_state <= 1;
+      end
+    end
+    endcase
   end
 end
 
+reg [1:0] read_state;
+reg out_valid;
 always @(posedge clk) begin
-  if ((resetn == 1'b0)) begin
-    last_part <= 0;
+  if (~resetn) begin
+    out_data_counter  <= 0;
+    ram_we <= 0;
+    read_state <= 0;
+    out_valid <= 0;
+    flushed <= 0;
   end
   else begin
-    if ((ram_addr>=(`RAM_NUM_WORDS-`COUNT_TO_SWITCH_BUFFERS-1)) && (ram_addr<(`RAM_NUM_WORDS-2))) begin
-      last_part <= 1;
+    case(read_state)
+    0: begin
+        if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
+          ram_we <= 1'b1;
+          ram_addr <= ram_start_addr;
+          out_data_counter <= 0;
+          read_state <= 1;
+          out_valid <= 0;
+        end
+        else begin
+          out_valid <= 0;
+          ram_we <= 1'b0;
+        end
     end
-    else begin
-      last_part <= 0;
+
+    1: begin
+        if (data_valid && mem_ctrl_data_last) begin
+          read_state <= 2;
+          out_valid <= 1;
+          ram_we <= 1'b1;
+	        ram_addr <= ram_addr + 1;
+          out_data_counter <= out_data_counter+1;
+          out_data_counter_snap <= out_data_counter+1;
+        end
+        else if (data_valid) begin
+          read_state <= 1;
+          out_valid <= 1;
+          ram_we <= 1'b1;
+	        ram_addr <= ram_addr + 1;
+          if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+            out_data_counter <= 0;
+          end
+          else begin
+            out_data_counter <= out_data_counter+1;
+          end
+        end 
+        else begin
+          out_valid <= 0;
+          ram_we <= 1'b0;
+        end
     end
+
+    2: begin
+        //we want to go for 40 more cycles
+        if (out_data_counter==(out_data_counter_snap+`COUNT_TO_SWITCH_BUFFERS)) begin
+          out_data_counter <= 0;
+          read_state <= 0;
+          out_valid <= 0;
+          flushed <= 1;
+          ram_we <= 1'b0;
+        end
+        else begin
+          out_data_counter <= out_data_counter+1;
+          read_state <= 2;
+          out_valid <= 1;
+          ram_we <= 1'b1;
+	        ram_addr <= ram_addr + 1;
+        end
+    end
+    endcase
   end
 end
 
@@ -108,15 +222,13 @@ assign ram_data_out = direction_of_dataflow ? data_out_ping : data_out_pong;
 //is connected to data_in. that's why we also don't enable signals 
 //for the flops in the buffers
 
-wire valid;
-assign valid = last_part || data_valid; 
 
 //this is the left of the figure of swizzle logic we drew in the mantra paper
 ping_buffer u_ping (
   .data_in(mem_ctrl_data_in),
   .data_out(data_out_ping),
   .load_unload(direction_of_dataflow),
-  .valid(valid),
+  .valid(out_valid),
   .clk(clk)
 );
 
@@ -125,7 +237,7 @@ pong_buffer u_pong (
   .data_in(mem_ctrl_data_in),
   .data_out(data_out_pong),
   .load_unload(opp_direction_of_dataflow),
-  .valid(valid),
+  .valid(out_valid),
   .clk(clk)
 );
 
