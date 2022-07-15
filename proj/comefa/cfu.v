@@ -59,6 +59,7 @@ assign funct3 = cmd_payload_function_id[2:0];
 
 wire funct7_ored = |funct7;
 
+wire swizzle_d2c_ready;
 
 wire [`DWIDTH-1:0] dram_data_out;
 wire [`AWIDTH-1:0] dram_addr_out;
@@ -111,7 +112,11 @@ assign rsp_payload_outputs_0_wire =
                                       (funct7_reg==7'd2) ? {32{1'b1}} : 32'b0
                                     ) :
                                     (funct3_reg==3'd6) ? dram_data_out : 
-                                    (funct3_reg==3'd5) ? {32{1'b1}}:
+                                    (funct3_reg==3'd5) ? (
+                                      (funct7_reg==3'd0) ? {32{1'b1}}:
+                                      (funct7_reg==3'd1) ? {32{1'b1}}:
+                                      (funct7_reg==3'd2) ? swizzle_d2c_ready : 32'b0
+                                    ) :
                                     (funct3_reg==3'd4) ? val : 
                                     (funct3_reg==3'd3) ? {32{1'b1}} :
                                     (funct3_reg==3'd2) ? {32{1'b1}} :
@@ -456,7 +461,7 @@ always @(posedge clk) begin
     dram_data_last <= 0;
   end
   else if (cmd_valid & cmd_ready) begin
-    dram_data_valid <= (funct3==`WRITE_TO_CRAM);
+    dram_data_valid <= (funct3==`WRITE_TO_CRAM) & ((funct7==0) || (funct7==1));
     dram_data_last <= (funct3==`WRITE_TO_CRAM) & (funct7==1);
   end
   else begin
@@ -482,7 +487,8 @@ swizzle_dram_to_cram u_swz_d2c (
   .ram_start_addr(cram_start_wr_addr),
   .ram_data_out(swz_cram_data),
   .ram_addr(swz_cram_addr_full),
-  .ram_we(load_cram)
+  .ram_we(load_cram),
+  .ready(swizzle_d2c_ready)
 );
 
 /////////////////////////////////////////

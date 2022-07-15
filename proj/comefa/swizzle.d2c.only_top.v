@@ -24,7 +24,8 @@ module swizzle_dram_to_cram(
   input      [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_start_addr,
   output     [`RAM_PORT_DWIDTH-1:0] ram_data_out,
   output reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr,
-  output reg                        ram_we
+  output reg                        ram_we,
+  output      ready
 );
 
 //when direction_of_dataflow is 0, that means
@@ -42,6 +43,7 @@ assign opp_direction_of_dataflow = ~direction_of_dataflow;
 reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] in_data_counter;
 reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter;
 reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter_snap;
+reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_start_addr_int;
       
 /*
 reg first_time_wait;
@@ -101,6 +103,7 @@ always @(posedge clk) begin
     0: begin
       if (data_valid && mem_ctrl_data_last) begin
         in_data_counter <= in_data_counter + 1;
+        direction_of_dataflow <= ~direction_of_dataflow;
         write_state <= 1;
         //in_data_counter stays wherever it is
       end
@@ -134,45 +137,69 @@ always @(posedge clk) begin
 end
 
 reg [1:0] read_state;
-reg out_valid;
+reg out_valid_internal;
+reg mem_ctrl_data_last_delayed;
+reg data_valid_delayed;
+reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr_int;
+reg ram_we_int;
+
+
+
+always @(posedge clk) begin
+  mem_ctrl_data_last_delayed <= mem_ctrl_data_last;
+  data_valid_delayed <= data_valid;
+  ram_addr <= ram_addr_int;
+  ram_we <= ram_we_int;
+end
+
 always @(posedge clk) begin
   if (~resetn) begin
     out_data_counter  <= 0;
-    ram_we <= 0;
+    ram_we_int <= 0;
     read_state <= 0;
-    out_valid <= 0;
-    flushed <= 0;
+    out_valid_internal <= 0;
+    flushed <= 1;
+    ram_start_addr_int <= 0;
   end
   else begin
     case(read_state)
     0: begin
         if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
-          ram_we <= 1'b1;
-          ram_addr <= ram_start_addr;
+          ram_we_int <= 1'b1;
+          ram_addr_int <= ram_start_addr;
+          ram_start_addr_int <= ram_start_addr+1;
           out_data_counter <= 0;
           read_state <= 1;
-          out_valid <= 0;
+          flushed <= 0;
         end
         else begin
-          out_valid <= 0;
-          ram_we <= 1'b0;
+          ram_we_int <= 1'b0;
         end
     end
 
     1: begin
         if (data_valid && mem_ctrl_data_last) begin
           read_state <= 2;
-          out_valid <= 1;
-          ram_we <= 1'b1;
-	        ram_addr <= ram_addr + 1;
+          ram_we_int <= 1'b1;
+          ram_addr_int <= ram_start_addr_int;
+          ram_start_addr_int <= ram_start_addr_int+1;
           out_data_counter <= out_data_counter+1;
           out_data_counter_snap <= out_data_counter+1;
         end
         else if (data_valid) begin
           read_state <= 1;
-          out_valid <= 1;
-          ram_we <= 1'b1;
-	        ram_addr <= ram_addr + 1;
+          ram_we_int <= 1'b1;
+          if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+            ram_addr_int <= ram_start_addr_int;
+            ram_start_addr_int <= ram_start_addr_int+1;
+          end
+          else if (out_data_counter == (`COUNT_TO_SWITCH_BUFFERS-1)) begin
+            ram_addr_int <= ram_start_addr_int;
+            ram_start_addr_int <= ram_start_addr_int+1;
+          end
+          else begin
+	          ram_addr_int <= ram_addr_int + 4;
+          end
           if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
             out_data_counter <= 0;
           end
@@ -181,35 +208,47 @@ always @(posedge clk) begin
           end
         end 
         else begin
-          out_valid <= 0;
-          ram_we <= 1'b0;
+          ram_we_int <= 1'b0;
         end
+        flushed <= 0;
     end
 
     2: begin
         //we want to go for 40 more cycles
-        if (out_data_counter==(out_data_counter_snap+`COUNT_TO_SWITCH_BUFFERS)) begin
+        if (out_data_counter==(out_data_counter_snap+`COUNT_TO_SWITCH_BUFFERS-1)) begin
           out_data_counter <= 0;
           read_state <= 0;
-          out_valid <= 0;
+          out_valid_internal <= 0;
           flushed <= 1;
-          ram_we <= 1'b0;
+          ram_we_int <= 1'b0;
         end
         else begin
           out_data_counter <= out_data_counter+1;
           read_state <= 2;
-          out_valid <= 1;
-          ram_we <= 1'b1;
-	        ram_addr <= ram_addr + 1;
+          out_valid_internal <= 1;
+          ram_we_int <= 1'b1;
+	        ram_addr_int <= ram_addr_int + 4;
+          flushed <= 0;
         end
     end
     endcase
   end
 end
 
+
+wire out_valid;
+assign out_valid = data_valid | out_valid_internal;
+
+assign ready = flushed;
+
 wire [`RAM_PORT_DWIDTH-1:0] data_out_ping;
 wire [`RAM_PORT_DWIDTH-1:0] data_out_pong;
+//wire [`RAM_PORT_DWIDTH-1:0] ram_data_out_wire;
 assign ram_data_out = direction_of_dataflow ? data_out_ping : data_out_pong;
+
+//always @(posedge clk) begin
+//  ram_data_out <= ram_data_out_wire;
+//end
 
 //we are faning out the mem_ctrl_data_in to both buffers
 //since we don't stop clock, does this mean that the data in the buffers
@@ -222,22 +261,45 @@ assign ram_data_out = direction_of_dataflow ? data_out_ping : data_out_pong;
 //is connected to data_in. that's why we also don't enable signals 
 //for the flops in the buffers
 
+wire ping_valid;
+// if load_unload is 0 (i.e. direction_of_data_flow is 0), then
+// data is being loaded (left to right). so, we need to use
+// the data_valid signal.
+// if load_unload is 1 (i.e. direction_of_data_flow is 1), then
+// data is being unloaded (top to bottom). so, we need to use
+// the out_valid signal.                 
+assign ping_valid = direction_of_dataflow ? out_valid : data_valid;
+
+
+//reg [`MEM_CTRL_DWIDTH-1:0] mem_ctrl_data_in_reg;
+//always @(posedge clk) begin
+//  mem_ctrl_data_in_reg <= mem_ctrl_data_in;
+//end
 
 //this is the left of the figure of swizzle logic we drew in the mantra paper
 ping_buffer u_ping (
   .data_in(mem_ctrl_data_in),
   .data_out(data_out_ping),
   .load_unload(direction_of_dataflow),
-  .valid(out_valid),
+  .valid(ping_valid),
   .clk(clk)
 );
+
+wire pong_valid;
+// if load_unload is 0 (i.e. opp_direction_of_data_flow is 0), then
+// data is being loaded (left to right). so, we need to use
+// the data_valid signal.
+// if load_unload is 1 (i.e. opp_direction_of_data_flow is 1), then
+// data is being unloaded (top to bottom). so, we need to use
+// the out_valid signal.                 
+assign pong_valid = opp_direction_of_dataflow ? out_valid : data_valid;
 
 //this is the right of the figure of swizzle logic we drew in the mantra paper
 pong_buffer u_pong (
   .data_in(mem_ctrl_data_in),
   .data_out(data_out_pong),
   .load_unload(opp_direction_of_dataflow),
-  .valid(out_valid),
+  .valid(pong_valid),
   .clk(clk)
 );
 

@@ -161,10 +161,24 @@ void do_exercise_cfu_op5(void) {
   unsigned char A[160*4];
   unsigned char B[160*4];
 
-  for (unsigned int i=0; i<160*4; i++) {
-    A[i] = ~i;
-    B[i] = ~i+100;
+  for (unsigned int i=0; i<160; i++) {
+    //Keeping all 4 parts of the arrays the same for easy debug.
+    //This ensures that the contents of each RAM are the same.
+    A[i+0*160] = ~i;
+    B[i+0*160] = ~i+100;
+    A[i+1*160] = ~i;
+    B[i+1*160] = ~i+100;
+    A[i+2*160] = ~i;
+    B[i+2*160] = ~i+100;
+    A[i+3*160] = ~i;
+    B[i+3*160] = ~i+100;
   }
+
+  int cfu = 0;
+  do {
+    cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
+  } while (cfu==0); //cfu will be 1 when ready
+  printf("CFU is ready to accept data");
 
   for (unsigned int i = 0; i < 160*4; i += 1) {
       int expected = 0xffffffff;
@@ -187,15 +201,22 @@ void do_exercise_cfu_op5(void) {
       //position 40 in the concatenated {higher,lower} value.
       unsigned int higher = ram_addr<<8; 
 
-      int cfu;
-      if ((i>0) && (i%159==0)) {
+      if ((i==159) || (i==319) || (i==479) || (i==639)) {
         cfu = cfu_op5(1, lower, higher); //set funct7 to 1 to indicate this is the last
+        printf("Writing data %08x at ram address %08x (higher =%08x)\n", lower, ram_addr, higher);
+        printf("i: %08d A: %08x B:%08x expected=%08x cfu= %08x\n", i, A[i], B[i], expected, cfu);
+
+        //after that wait for readyness
+        do {
+          cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
+        } while (cfu==0); //cfu will be 1 when ready
+        printf("Swizzle logic has been flushed\n");
       }
       else {
         cfu = cfu_op5(0, lower, higher);
+        printf("Writing data %08x at ram address %08x (higher =%08x)\n", lower, ram_addr, higher);
+        printf("i: %08d A: %08x B:%08x expected=%08x cfu= %08x\n", i, A[i], B[i], expected, cfu);
       }
-      printf("Writing data %08x at ram address %08x (higher =%08x)\n", lower, ram_addr, higher);
-      printf("A: %08x B:%08x expected=%08x cfu= %08x\n", A[i], B[i], expected, cfu);
       //if (cfu != expected) {
       //  printf("\n***FAIL\n");
       //  return;
