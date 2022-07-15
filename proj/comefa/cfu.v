@@ -403,13 +403,29 @@ rf u_rf (
 //from normal BRAM and send executable (micro)instructions
 //to Comefa RAM
 /////////////////////////////////////////
-assign start = ((funct3_reg==`EXECUTE_INSTRUCTIONS) & (funct7_reg==0) & cmd_valid & cmd_ready);
+reg [`AWIDTH-1:0] stored_inst_start_addr;
+reg [`AWIDTH-1:0] stored_inst_end_addr;
+
+always @(posedge clk) begin
+  if (~resetn) begin
+    stored_inst_start_addr <= 0;
+    stored_inst_end_addr <= 0;
+  end
+  else if ((funct3_reg==`EXECUTE_INSTRUCTIONS) & (funct7_reg==2) & cmd_valid) begin
+    stored_inst_start_addr <= cmd_payload_inputs_0_reg;
+    stored_inst_end_addr <= cmd_payload_inputs_1_reg;
+  end
+  else if (done) begin
+    stored_inst_start_addr <= 0;
+    stored_inst_end_addr <= 0;
+  end
+end
 
 always @(posedge clk) begin
   if (~resetn) begin
     start_reg <= 1'b0;
   end
-  else if (start) begin
+  else if ((funct3_reg==`EXECUTE_INSTRUCTIONS) & (funct7_reg==0) & cmd_valid) begin
     start_reg <= 1'b1;
   end
   else if (done) begin
@@ -417,7 +433,7 @@ always @(posedge clk) begin
   end
 end
 
-assign check = ((funct3_reg==`EXECUTE_INSTRUCTIONS) & (funct7_reg==1) & cmd_valid & cmd_ready);
+assign check = ((funct3_reg==`EXECUTE_INSTRUCTIONS) & (funct7_reg==1) & cmd_valid);
 
 always @(posedge clk) begin
   if (~resetn) begin
@@ -428,6 +444,7 @@ always @(posedge clk) begin
   end
 end
 
+
 //TODO: Change start and end addr come from the CPU
 //instead of being hardcoded
 controller u_ctrl (
@@ -436,8 +453,8 @@ controller u_ctrl (
   .start(start_reg),
   .done(done),
   .stored_instr_addr(stored_instr_addr_internal),
-  .stored_instr_start_addr(9'd2),
-  .stored_instr_end_addr(9'd2),
+  .stored_instr_start_addr(stored_inst_start_addr),
+  .stored_instr_end_addr(stored_inst_end_addr),
   .stored_instruction(stored_instr_dataout_internal),
   .exec_instr_addr(exec_instr_addr),
   .exec_instruction(exec_instruction),

@@ -252,9 +252,14 @@ void do_exercise_cfu_op6(void) {
 void do_exercise_cfu_op7_start(void) {
   puts("\nExercise CFU Op7_start aka Start Execution\n");
   //int count = 0;
+  int cfu;
   //for (int a = 0x0; a < 0x64; a += 0x1) {
       //int expected = a;
-      int cfu = cfu_op7(0, 0, 0); //Data written doesn't matter
+      int inst_start_addr = 2;
+      int inst_end_addr = 3;
+      cfu = cfu_op7(2, inst_start_addr, inst_end_addr);  //configure start and end addresses
+
+      cfu = cfu_op7(0, 0, 0); //actually start the computation
       printf("Got result %08x after starting execution\n", cfu);
       //printf("Read data %08x from address %08x\n", cfu, a);
       //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
