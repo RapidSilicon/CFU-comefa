@@ -39,7 +39,9 @@
 //This allows us to write 1 macro instruction into the instruction RAM
 //every cycle. If we use 40 bits, then we'd need to write one
 //instruction in 2 cycles.
-`define STORED_INST_DATA_WIDTH 32
+//For now, since we are loading the instruction memory using $readmemh,
+//I am going back to 40 bits here.
+`define STORED_INST_DATA_WIDTH 40
 
 `define OPCODE_WIDTH        4
 `define PRECISION_WIDTH     4

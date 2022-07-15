@@ -164,14 +164,14 @@ void do_exercise_cfu_op5(void) {
   for (unsigned int i=0; i<160; i++) {
     //Keeping all 4 parts of the arrays the same for easy debug.
     //This ensures that the contents of each RAM are the same.
-    A[i+0*160] = ~i;
-    B[i+0*160] = ~i+100;
-    A[i+1*160] = ~i;
-    B[i+1*160] = ~i+100;
-    A[i+2*160] = ~i;
-    B[i+2*160] = ~i+100;
-    A[i+3*160] = ~i;
-    B[i+3*160] = ~i+100;
+    A[i+0*160] = i;
+    B[i+0*160] = i+10;
+    A[i+1*160] = i;
+    B[i+1*160] = i+10;
+    A[i+2*160] = i;
+    B[i+2*160] = i+10;
+    A[i+3*160] = i;
+    B[i+3*160] = i+10;
   }
 
   int cfu = 0;
@@ -228,7 +228,6 @@ void do_exercise_cfu_op5(void) {
 
 }
 
-//TODO: This will work only when swizzle_cram_to_dram is instantiated in the cfu
 // Test template instruction
 void do_exercise_cfu_op6(void) {
   puts("\nExercise CFU Op6 aka Read from Comefa RAM\n");

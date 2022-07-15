@@ -352,7 +352,7 @@ assign val = stored_instr_dataout_cpu;
 assign stored_instr_we_internal = 1'b0;
 assign stored_instr_datain_internal = {`DWIDTH{1'b0}};
 
-dpram #(.AWIDTH(`AWIDTH), .NUM_WORDS(`NUM_LOCATIONS), .DWIDTH(`DWIDTH)) u_instr_ram(
+dpram #(.AWIDTH(`AWIDTH), .NUM_WORDS(`NUM_LOCATIONS), .DWIDTH(`STORED_INST_DATA_WIDTH)) u_instr_ram(
   .clk(clk),
   .address_a(stored_instr_addr_cpu), //port to write from cpu
   .wren_a(stored_instr_we_cpu),
@@ -367,7 +367,7 @@ dpram #(.AWIDTH(`AWIDTH), .NUM_WORDS(`NUM_LOCATIONS), .DWIDTH(`DWIDTH)) u_instr_
 //For now, instead of sending instructions from CPU,
 //I'm just loading them from a file.
 initial begin
-  $readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.dat", u_instr_ram.ram);
+  $readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.eltwiseadd.dat", u_instr_ram.ram);
 end
 
 /////////////////////////////////////////
@@ -428,7 +428,7 @@ always @(posedge clk) begin
   end
 end
 
-//TODO: Change all register settings to come from the CPU
+//TODO: Change start and end addr come from the CPU
 //instead of being hardcoded
 controller u_ctrl (
   .clk(clk),
@@ -436,8 +436,8 @@ controller u_ctrl (
   .start(start_reg),
   .done(done),
   .stored_instr_addr(stored_instr_addr_internal),
-  .stored_instr_start_addr(9'd3),
-  .stored_instr_end_addr(9'd7),
+  .stored_instr_start_addr(9'd2),
+  .stored_instr_end_addr(9'd2),
   .stored_instruction(stored_instr_dataout_internal),
   .exec_instr_addr(exec_instr_addr),
   .exec_instruction(exec_instruction),
@@ -470,7 +470,16 @@ always @(posedge clk) begin
   end
 end
 wire [`DWIDTH-1:0] dram_data_in;
-assign dram_data_in = {cmd_payload_inputs_1_reg[7:0], cmd_payload_inputs_0_reg[31:0]};
+//assign dram_data_in = {cmd_payload_inputs_1_reg[7:0], cmd_payload_inputs_0_reg[31:0]};
+//Need to do the following. Using generate statements below.
+//assign dram_data_in = {cmd_payload_inputs_0_reg[0:31], cmd_payload_inputs_1_reg[0:7]};
+genvar i;
+generate for (i=0;i<32;i=i+1) begin
+  assign dram_data_in[8+i] = cmd_payload_inputs_0_reg[31-i];
+end endgenerate
+generate for (i=0;i<8;i=i+1) begin
+  assign dram_data_in[i] = cmd_payload_inputs_1_reg[7-i];
+end endgenerate
 
 //+LOG_NUM_CRAMS below because higher order bits
 //to decode which of the N crams to address.

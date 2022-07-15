@@ -243,8 +243,13 @@ assign ready = flushed;
 
 wire [`RAM_PORT_DWIDTH-1:0] data_out_ping;
 wire [`RAM_PORT_DWIDTH-1:0] data_out_pong;
-//wire [`RAM_PORT_DWIDTH-1:0] ram_data_out_wire;
-assign ram_data_out = direction_of_dataflow ? data_out_ping : data_out_pong;
+wire [`RAM_PORT_DWIDTH-1:0] ram_data_out_internal;
+assign ram_data_out_internal = direction_of_dataflow ? data_out_ping : data_out_pong;
+
+genvar i;
+generate for (i=0;i<`RAM_PORT_DWIDTH;i=i+1) begin
+  assign ram_data_out[i] = ram_data_out_internal[`RAM_PORT_DWIDTH-1-i];
+end endgenerate
 
 //always @(posedge clk) begin
 //  ram_data_out <= ram_data_out_wire;
