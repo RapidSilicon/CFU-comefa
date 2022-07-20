@@ -21,6 +21,9 @@ endmodule
   input load_unload, //0 for load (left to right), 1 for unload (top to bottom)
   input valid,
   input clk);
+
+  wire [40-1:0] data_out_internal;
+  assign data_out = data_out_internal & {40{load_unload}};
   
 wire q_0_0;
 wire q_0_1;
@@ -1783,124 +1786,124 @@ wire q_39_39;
   assign q_39_minus1 = data_in[39];
   
 
-  assign data_out[0] = q_39_0;
+  assign data_out_internal[0] = q_39_0;
   
 
-  assign data_out[1] = q_39_1;
+  assign data_out_internal[1] = q_39_1;
   
 
-  assign data_out[2] = q_39_2;
+  assign data_out_internal[2] = q_39_2;
   
 
-  assign data_out[3] = q_39_3;
+  assign data_out_internal[3] = q_39_3;
   
 
-  assign data_out[4] = q_39_4;
+  assign data_out_internal[4] = q_39_4;
   
 
-  assign data_out[5] = q_39_5;
+  assign data_out_internal[5] = q_39_5;
   
 
-  assign data_out[6] = q_39_6;
+  assign data_out_internal[6] = q_39_6;
   
 
-  assign data_out[7] = q_39_7;
+  assign data_out_internal[7] = q_39_7;
   
 
-  assign data_out[8] = q_39_8;
+  assign data_out_internal[8] = q_39_8;
   
 
-  assign data_out[9] = q_39_9;
+  assign data_out_internal[9] = q_39_9;
   
 
-  assign data_out[10] = q_39_10;
+  assign data_out_internal[10] = q_39_10;
   
 
-  assign data_out[11] = q_39_11;
+  assign data_out_internal[11] = q_39_11;
   
 
-  assign data_out[12] = q_39_12;
+  assign data_out_internal[12] = q_39_12;
   
 
-  assign data_out[13] = q_39_13;
+  assign data_out_internal[13] = q_39_13;
   
 
-  assign data_out[14] = q_39_14;
+  assign data_out_internal[14] = q_39_14;
   
 
-  assign data_out[15] = q_39_15;
+  assign data_out_internal[15] = q_39_15;
   
 
-  assign data_out[16] = q_39_16;
+  assign data_out_internal[16] = q_39_16;
   
 
-  assign data_out[17] = q_39_17;
+  assign data_out_internal[17] = q_39_17;
   
 
-  assign data_out[18] = q_39_18;
+  assign data_out_internal[18] = q_39_18;
   
 
-  assign data_out[19] = q_39_19;
+  assign data_out_internal[19] = q_39_19;
   
 
-  assign data_out[20] = q_39_20;
+  assign data_out_internal[20] = q_39_20;
   
 
-  assign data_out[21] = q_39_21;
+  assign data_out_internal[21] = q_39_21;
   
 
-  assign data_out[22] = q_39_22;
+  assign data_out_internal[22] = q_39_22;
   
 
-  assign data_out[23] = q_39_23;
+  assign data_out_internal[23] = q_39_23;
   
 
-  assign data_out[24] = q_39_24;
+  assign data_out_internal[24] = q_39_24;
   
 
-  assign data_out[25] = q_39_25;
+  assign data_out_internal[25] = q_39_25;
   
 
-  assign data_out[26] = q_39_26;
+  assign data_out_internal[26] = q_39_26;
   
 
-  assign data_out[27] = q_39_27;
+  assign data_out_internal[27] = q_39_27;
   
 
-  assign data_out[28] = q_39_28;
+  assign data_out_internal[28] = q_39_28;
   
 
-  assign data_out[29] = q_39_29;
+  assign data_out_internal[29] = q_39_29;
   
 
-  assign data_out[30] = q_39_30;
+  assign data_out_internal[30] = q_39_30;
   
 
-  assign data_out[31] = q_39_31;
+  assign data_out_internal[31] = q_39_31;
   
 
-  assign data_out[32] = q_39_32;
+  assign data_out_internal[32] = q_39_32;
   
 
-  assign data_out[33] = q_39_33;
+  assign data_out_internal[33] = q_39_33;
   
 
-  assign data_out[34] = q_39_34;
+  assign data_out_internal[34] = q_39_34;
   
 
-  assign data_out[35] = q_39_35;
+  assign data_out_internal[35] = q_39_35;
   
 
-  assign data_out[36] = q_39_36;
+  assign data_out_internal[36] = q_39_36;
   
 
-  assign data_out[37] = q_39_37;
+  assign data_out_internal[37] = q_39_37;
   
 
-  assign data_out[38] = q_39_38;
+  assign data_out_internal[38] = q_39_38;
   
 
-  assign data_out[39] = q_39_39;
+  assign data_out_internal[39] = q_39_39;
   
 
   wire q_minus1_0;
@@ -18070,6 +18073,9 @@ endmodule
   input load_unload, //0 for load (left to right), 1 for unload (top to bottom)
   input valid,
   input clk);
+
+  wire [40-1:0] data_out_internal;
+  assign data_out = data_out_internal & {40{load_unload}};
   
 wire q_0_0;
 wire q_0_1;
@@ -19832,124 +19838,124 @@ wire q_39_39;
   assign q_39_minus1 = data_in[39];
   
 
-  assign data_out[0] = q_39_0;
+  assign data_out_internal[0] = q_39_0;
   
 
-  assign data_out[1] = q_39_1;
+  assign data_out_internal[1] = q_39_1;
   
 
-  assign data_out[2] = q_39_2;
+  assign data_out_internal[2] = q_39_2;
   
 
-  assign data_out[3] = q_39_3;
+  assign data_out_internal[3] = q_39_3;
   
 
-  assign data_out[4] = q_39_4;
+  assign data_out_internal[4] = q_39_4;
   
 
-  assign data_out[5] = q_39_5;
+  assign data_out_internal[5] = q_39_5;
   
 
-  assign data_out[6] = q_39_6;
+  assign data_out_internal[6] = q_39_6;
   
 
-  assign data_out[7] = q_39_7;
+  assign data_out_internal[7] = q_39_7;
   
 
-  assign data_out[8] = q_39_8;
+  assign data_out_internal[8] = q_39_8;
   
 
-  assign data_out[9] = q_39_9;
+  assign data_out_internal[9] = q_39_9;
   
 
-  assign data_out[10] = q_39_10;
+  assign data_out_internal[10] = q_39_10;
   
 
-  assign data_out[11] = q_39_11;
+  assign data_out_internal[11] = q_39_11;
   
 
-  assign data_out[12] = q_39_12;
+  assign data_out_internal[12] = q_39_12;
   
 
-  assign data_out[13] = q_39_13;
+  assign data_out_internal[13] = q_39_13;
   
 
-  assign data_out[14] = q_39_14;
+  assign data_out_internal[14] = q_39_14;
   
 
-  assign data_out[15] = q_39_15;
+  assign data_out_internal[15] = q_39_15;
   
 
-  assign data_out[16] = q_39_16;
+  assign data_out_internal[16] = q_39_16;
   
 
-  assign data_out[17] = q_39_17;
+  assign data_out_internal[17] = q_39_17;
   
 
-  assign data_out[18] = q_39_18;
+  assign data_out_internal[18] = q_39_18;
   
 
-  assign data_out[19] = q_39_19;
+  assign data_out_internal[19] = q_39_19;
   
 
-  assign data_out[20] = q_39_20;
+  assign data_out_internal[20] = q_39_20;
   
 
-  assign data_out[21] = q_39_21;
+  assign data_out_internal[21] = q_39_21;
   
 
-  assign data_out[22] = q_39_22;
+  assign data_out_internal[22] = q_39_22;
   
 
-  assign data_out[23] = q_39_23;
+  assign data_out_internal[23] = q_39_23;
   
 
-  assign data_out[24] = q_39_24;
+  assign data_out_internal[24] = q_39_24;
   
 
-  assign data_out[25] = q_39_25;
+  assign data_out_internal[25] = q_39_25;
   
 
-  assign data_out[26] = q_39_26;
+  assign data_out_internal[26] = q_39_26;
   
 
-  assign data_out[27] = q_39_27;
+  assign data_out_internal[27] = q_39_27;
   
 
-  assign data_out[28] = q_39_28;
+  assign data_out_internal[28] = q_39_28;
   
 
-  assign data_out[29] = q_39_29;
+  assign data_out_internal[29] = q_39_29;
   
 
-  assign data_out[30] = q_39_30;
+  assign data_out_internal[30] = q_39_30;
   
 
-  assign data_out[31] = q_39_31;
+  assign data_out_internal[31] = q_39_31;
   
 
-  assign data_out[32] = q_39_32;
+  assign data_out_internal[32] = q_39_32;
   
 
-  assign data_out[33] = q_39_33;
+  assign data_out_internal[33] = q_39_33;
   
 
-  assign data_out[34] = q_39_34;
+  assign data_out_internal[34] = q_39_34;
   
 
-  assign data_out[35] = q_39_35;
+  assign data_out_internal[35] = q_39_35;
   
 
-  assign data_out[36] = q_39_36;
+  assign data_out_internal[36] = q_39_36;
   
 
-  assign data_out[37] = q_39_37;
+  assign data_out_internal[37] = q_39_37;
   
 
-  assign data_out[38] = q_39_38;
+  assign data_out_internal[38] = q_39_38;
   
 
-  assign data_out[39] = q_39_39;
+  assign data_out_internal[39] = q_39_39;
   
 
   wire q_minus1_0;

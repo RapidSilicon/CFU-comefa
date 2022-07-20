@@ -19,10 +19,13 @@ module swizzle_cram_to_dram(
   input  resetn,
   //ram interface - data comes in
   input       [`RAM_PORT_DWIDTH-1:0] ram_data_in,
+  input       ram_data_last,
   //memory controller interface - data goes out
   output      [`MEM_CTRL_DWIDTH-1:0] mem_ctrl_data_out,
   output  reg [`MEM_CTRL_AWIDTH-1:0] mem_ctrl_addr,
-  output  reg                        mem_ctrl_we
+  input       [`MEM_CTRL_AWIDTH-1:0] mem_ctrl_addr_start,
+  output  reg                        mem_ctrl_we,
+  output  reg ready
 );
 
 //when direction_of_dataflow is 0, that means
@@ -37,48 +40,120 @@ reg direction_of_dataflow;
 wire opp_direction_of_dataflow;
 assign opp_direction_of_dataflow = ~direction_of_dataflow;
 
-reg [`LOG_COUNT_TO_SWITCH_BUFFERS-1:0] counter;
-reg first_time_wait;
-reg last_part;
+reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] in_data_counter;
+reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter;
 
+
+reg [1:0] write_state;
 always @(posedge clk) begin
   if (~resetn) begin
-    counter  <= 0;
-    mem_ctrl_we <= 0;
-    mem_ctrl_addr <= `MEM_CTRL_START_ADDR;
+    in_data_counter  <= 0;
     direction_of_dataflow <= 0;
-  end 
-  else if (data_valid || last_part) begin
-    counter <= counter + 1;
-    if (first_time_wait) begin
-      mem_ctrl_we <= 1'b1;
-	    mem_ctrl_addr <= mem_ctrl_addr + 1;
-    end
-    if (counter==`COUNT_TO_SWITCH_BUFFERS) begin
-      direction_of_dataflow <= ~direction_of_dataflow;
-      counter <= 0;
-    end
-    if (counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
-      first_time_wait <= 1;
-      mem_ctrl_we <= 1'b1;
-    end
-  end    
+    write_state <= 0;
+    ready <= 0;
+  end
   else begin
-    mem_ctrl_we <= 0;
+    case(write_state)
+    0: begin
+      if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-2))) begin
+        ready <= 1;
+        in_data_counter <= in_data_counter + 1;
+      end
+      else if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
+        write_state <= 1;
+        direction_of_dataflow <= ~direction_of_dataflow;
+        in_data_counter <= in_data_counter + 1;
+        ready <= 0;
+      end
+      else if (data_valid) begin
+        in_data_counter <= in_data_counter + 1;
+        write_state <= 0;
+      end
+    end
+
+    1:  begin
+      if (data_valid & ram_data_last) begin
+          write_state <= 0;
+          in_data_counter  <= 0;
+          direction_of_dataflow <= 0;
+      end
+      else if (data_valid) begin
+        write_state <= 1;
+        if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
+          direction_of_dataflow <= ~direction_of_dataflow;
+          in_data_counter <= in_data_counter + 1;
+        end
+        else if (in_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+          direction_of_dataflow <= ~direction_of_dataflow;
+          in_data_counter <= 0;
+        end
+        else begin
+          in_data_counter <= in_data_counter + 1;
+        end
+      end  
+      ready <= 0;
+    end
+    endcase
   end
 end
 
+reg [1:0] read_state;
 always @(posedge clk) begin
-  if ((resetn == 1'b0)) begin
-    last_part <= 0;
+  if (~resetn) begin
+    out_data_counter  <= 0;
+    mem_ctrl_we <= 0;
+    read_state <= 0;
   end
   else begin
-    if ((mem_ctrl_addr>=(`MEM_CTRL_NUM_WORDS-`COUNT_TO_SWITCH_BUFFERS-1)) && (mem_ctrl_addr<(`MEM_CTRL_NUM_WORDS-2))) begin
-      last_part <= 1;
+    case(read_state)
+    0: begin
+        if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
+          mem_ctrl_we <= 1'b0;
+          mem_ctrl_addr <= mem_ctrl_addr_start;
+          out_data_counter <= 0;
+          read_state <= 1;
+        end
+        else begin
+          mem_ctrl_we <= 1'b0;
+        end
     end
-    else begin
-      last_part <= 0;
+
+    1: begin
+        if (data_valid && ram_data_last) begin
+          read_state <= 2;
+          mem_ctrl_we <= 1'b1;
+	        mem_ctrl_addr <= mem_ctrl_addr + 1;
+          out_data_counter <= 0;
+        end
+        else if (data_valid) begin
+          read_state <= 1;
+          mem_ctrl_we <= 1'b1;
+          if (out_data_counter == (`COUNT_TO_SWITCH_BUFFERS-1)) begin
+            mem_ctrl_addr <= mem_ctrl_addr_start;
+          end
+          else begin
+	          mem_ctrl_addr <= mem_ctrl_addr + 1;
+          end
+          if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+            out_data_counter <= 0;
+          end
+          else begin
+            out_data_counter <= out_data_counter+1;
+          end
+        end 
+        else begin
+          mem_ctrl_we <= 1'b0;
+        end
     end
+
+    2: begin
+          read_state <= 0;
+          mem_ctrl_we <= 0;
+          mem_ctrl_addr <= 0;
+          out_data_counter <= 0;
+    end
+
+    endcase
   end
 end
 
@@ -97,24 +172,29 @@ assign mem_ctrl_data_out = direction_of_dataflow ? data_out_ping : data_out_pong
 //is connected to data_in. that's why we also don't enable signals 
 //for the flops in the buffers
 
-wire valid;
-assign valid = last_part || data_valid; 
+wire ping_valid;
+//assign ping_valid = direction_of_dataflow ? out_valid : data_valid;
+assign ping_valid = data_valid;
 
 //this is the left of the figure of swizzle logic we drew in the mantra paper
 ping_buffer u_ping (
   .data_in(ram_data_in),
   .data_out(data_out_ping),
   .load_unload(direction_of_dataflow),
-  .valid(valid),
+  .valid(ping_valid),
   .clk(clk)
 );
+
+wire pong_valid;
+//assign pong_valid = opp_direction_of_dataflow ? out_valid : data_valid;
+assign pong_valid = data_valid;
 
 //this is the right of the figure of swizzle logic we drew in the mantra paper
 pong_buffer u_pong (
   .data_in(ram_data_in),
   .data_out(data_out_pong),
   .load_unload(opp_direction_of_dataflow),
-  .valid(valid),
+  .valid(pong_valid),
   .clk(clk)
 );
 

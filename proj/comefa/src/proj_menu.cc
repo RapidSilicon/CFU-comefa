@@ -119,6 +119,11 @@ void do_exercise_cfu_op3(void) {
   printf("Performed %d comparisons", count);
 }
 
+  unsigned char A[160*4];
+  unsigned char B[160*4];
+  unsigned char C_expect[160*4];
+  unsigned char C[160*4];
+
 // Test template instruction
 void do_exercise_cfu_op4(void) {
   puts("\nExercise CFU Op4 aka Read from INST_RAM\n");
@@ -158,9 +163,6 @@ void do_exercise_cfu_op5(void) {
   unsigned int ram_addr = row_addr<<2;     //need to shift left by 2 to get from row address
                                            //to normal addr coz the column muxing factor is 4.
 
-  unsigned char A[160*4];
-  unsigned char B[160*4];
-
   for (unsigned int i=0; i<160; i++) {
     //Keeping all 4 parts of the arrays the same for easy debug.
     //This ensures that the contents of each RAM are the same.
@@ -172,6 +174,11 @@ void do_exercise_cfu_op5(void) {
     B[i+2*160] = i+10;
     A[i+3*160] = i;
     B[i+3*160] = i+10;
+
+    C_expect[i+0*160] = A[i+0*160] + B[i+0*160];
+    C_expect[i+1*160] = A[i+1*160] + B[i+1*160];
+    C_expect[i+2*160] = A[i+2*160] + B[i+2*160];
+    C_expect[i+3*160] = A[i+3*160] + B[i+3*160];
   }
 
   int cfu = 0;
@@ -232,17 +239,57 @@ void do_exercise_cfu_op5(void) {
 void do_exercise_cfu_op6(void) {
   puts("\nExercise CFU Op6 aka Read from Comefa RAM\n");
   int count = 0;
-  int num_elements_to_read = 100;
-  int starting_addr = 10;
-  for (int a = 0x0; a < 200; a += 0x1) {
+  int num_elements_to_read = 160; //160 elements in 1 RAM
+
+  //Results are available in row 22
+  unsigned int row_addr = 22;   //7 bits (6:0)
+  unsigned int ram_addr = row_addr<<2;  //need to shift left by 2 to get from row address
+                                        //to normal addr coz the column muxing factor is 4.
+                                        //total = 9 bits (8:0)
+  int cfu = 0;
+
+  for (int i = 0; i < 160*4; i += 1) {
       //int expected = a;
-      int cfu = cfu_op6(0, starting_addr, num_elements_to_read);
-      printf("Read data %08x\n", cfu);
       //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
       //if (cfu != expected) {
       //  printf("\n***FAIL\n");
       //  return;
       //}
+
+      if ((i>0) && (i%160==0)) {
+        ram_addr = ram_addr + (1<<9); //the <<9 is to change the higher order bits
+                                //that decide which RAM the data goes to. 
+                                //after every 160 columns, we want to move to
+                                //the next ram.
+      }
+
+      //if ((i==0) || (i==160) || (i==320) || (i==480)) {
+      //  do {
+      //    cfu = cfu_op6(2, ram_addr, num_elements_to_read); //set funct7 to 2 to indicate we are going to read data
+      //                                                      //this will enable the swizzle logic
+      //  } while (cfu==0); //cfu will be 1 when ready
+      //  printf("Swizzle logic is ready to dispense data");
+      //}
+
+      if ((i==159) || (i==319) || (i==479) || (i==639)) {
+        cfu = cfu_op6(1, ram_addr, num_elements_to_read); //set funct7 to 1 to indicate this is the last
+        C[i] = cfu;
+        printf("Reading data %08x from ram_addr=%08x+%08x\n", C[i], ram_addr, i);
+      }
+      else {
+        cfu = cfu_op6(0, ram_addr, num_elements_to_read);
+        C[i] = cfu;
+        printf("Reading data %08x from ram_addr=%08x+%08x\n", C[i], ram_addr, i);
+      }
+      
+      //Match with expected value
+      if (C[i] == C_expect[i]) {
+        printf("Pass\n");
+      }
+      else {
+        printf("Fail\n");
+      }
+
       count++;
   }
   printf("Performed %d comparisons", count);

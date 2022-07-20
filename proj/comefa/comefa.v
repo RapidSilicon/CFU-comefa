@@ -237,11 +237,10 @@ always @(posedge clk) begin
         // Updating actual arrays at clock edge
         /////////////////////////////////////////////////
         ram_internal[dst] <= ram_internal_temp[dst];
-        ram[(dst<<2)+0] <= ram_internal_temp[dst][31:0];
-        ram[(dst<<2)+1] <= ram_internal_temp[dst][63:32];
-        ram[(dst<<2)+2] <= ram_internal_temp[dst][95:64];
-        ram[(dst<<2)+3] <= ram_internal_temp[dst][127:96];
-        ram[(dst<<2)+4] <= ram_internal_temp[dst][159:128];
+        ram[(dst<<2)+0] <= ram_internal_temp[dst][1*`DWIDTH-1:0*`DWIDTH];
+        ram[(dst<<2)+1] <= ram_internal_temp[dst][2*`DWIDTH-1:1*`DWIDTH];
+        ram[(dst<<2)+2] <= ram_internal_temp[dst][3*`DWIDTH-1:2*`DWIDTH];
+        ram[(dst<<2)+3] <= ram_internal_temp[dst][4*`DWIDTH-1:3*`DWIDTH];
 
         //This is to model the delay in the peripherals.
         //Technically, this is not required.
@@ -292,9 +291,141 @@ always @(posedge clk) begin
         end
 
         //read port
-        q2 <= ram[addr2];
+        else begin
+            q2 <= ram[addr2];
+        end
     end  
 end
+
+/////////////////////////////////////////////////
+// Debug signals
+/////////////////////////////////////////////////
+//wire [159:0] row3;
+//assign row3 = ram_internal[3];
+//
+//wire [159:0] row4;
+//assign row4 = ram_internal[4];
+//
+//wire [159:0] row5;
+//assign row5 = ram_internal[5];
+//
+//wire [159:0] row6;
+//assign row6 = ram_internal[6];
+//
+//wire [159:0] row7;
+//assign row7 = ram_internal[7];
+//
+//wire [159:0] row8;
+//assign row8 = ram_internal[8];
+//
+//wire [159:0] row9;
+//assign row9 = ram_internal[9];
+//
+//wire [159:0] row10;
+//assign row10 = ram_internal[10];
+//
+//wire [159:0] row11;
+//assign row11 = ram_internal[11];
+//
+//wire [159:0] row12;
+//assign row12 = ram_internal[12];
+//
+//wire [159:0] row13;
+//assign row13 = ram_internal[13];
+//
+//wire [159:0] row14;
+//assign row14 = ram_internal[14];
+//
+//wire [159:0] row15;
+//assign row15 = ram_internal[15];
+//
+//wire [159:0] row16;
+//assign row16 = ram_internal[16];
+//
+//wire [159:0] row17;
+//assign row17 = ram_internal[17];
+//
+//wire [159:0] row18;
+//assign row18 = ram_internal[18];
+//
+//wire [159:0] row19;
+//assign row19 = ram_internal[19];
+//
+//wire [159:0] row20;
+//assign row20 = ram_internal[20];
+//
+//wire [159:0] row21;
+//assign row21 = ram_internal[21];
+//
+//wire [159:0] row22;
+//assign row22 = ram_internal[22];
+//
+//wire [159:0] row23;
+//assign row23 = ram_internal[23];
+//
+//wire [159:0] row24;
+//assign row24 = ram_internal[24];
+//
+//wire [159:0] row25;
+//assign row25 = ram_internal[25];
+//
+//wire [159:0] row26;
+//assign row26 = ram_internal[26];
+//
+//wire [159:0] row27;
+//assign row27 = ram_internal[27];
+//
+//wire [159:0] row28;
+//assign row28 = ram_internal[28];
+//
+//wire [159:0] row29;
+//assign row29 = ram_internal[29];
+//
+//wire [159:0] row30;
+//assign row30 = ram_internal[30];
+//
+//wire [159:0] row31;
+//assign row31 = ram_internal[31];
+//
+//wire [159:0] row32;
+//assign row32 = ram_internal[32];
+//
+//wire [159:0] row33;
+//assign row33 = ram_internal[33];
+//
+//wire [159:0] row34;
+//assign row34 = ram_internal[34];
+//
+//wire [159:0] row35;
+//assign row35 = ram_internal[35];
+//
+//wire [159:0] row36;
+//assign row36 = ram_internal[36];
+//
+//wire [159:0] row37;
+//assign row37 = ram_internal[37];
+//
+//wire [159:0] row38;
+//assign row38 = ram_internal[38];
+//
+//wire [159:0] row39;
+//assign row39 = ram_internal[39];
+//
+//wire [159:0] row40;
+//assign row40 = ram_internal[40];
+//
+//wire [159:0] row41;
+//assign row41 = ram_internal[41];
+//
+//wire [159:0] row42;
+//assign row42 = ram_internal[42];
+//
+//
+//wire [7:0] a0;
+//assign a0 = {ram_internal[3][0],ram_internal[4][0],ram_internal[5][0],ram_internal[6][0],ram_internal[7][0],ram_internal[8][0],ram_internal[9][0],ram_internal[10][0]};
+//wire [7:0] b0;
+//assign b0 = {ram_internal[11][0],ram_internal[12][0],ram_internal[13][0],ram_internal[14][0],ram_internal[15][0],ram_internal[16][0],ram_internal[17][0],ram_internal[17][0]};
+
 
 endmodule
 

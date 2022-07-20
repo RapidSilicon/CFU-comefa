@@ -60,8 +60,11 @@ assign funct3 = cmd_payload_function_id[2:0];
 wire funct7_ored = |funct7;
 
 wire swizzle_d2c_ready;
+wire swizzle_c2d_ready;
 
 wire [`DWIDTH-1:0] dram_data_out;
+wire [`DWIDTH-1:0] dram_data_out_c2d;
+reg [`DWIDTH-1:0] dram_data_out_c2d_delayed;
 wire [`AWIDTH-1:0] dram_addr_out;
 wire dram_we_out;
 
@@ -111,7 +114,10 @@ assign rsp_payload_outputs_0_wire =
                                       (funct7_reg==7'd1) ? done_reg   :
                                       (funct7_reg==7'd2) ? {32{1'b1}} : 32'b0
                                     ) :
-                                    (funct3_reg==3'd6) ? dram_data_out : 
+                                    (funct3_reg==3'd6) ? (
+                                      (funct7_reg==3'd0) ? dram_data_out_c2d_delayed :  //MSB 8 bits are ignored
+                                      (funct7_reg==3'd1) ? dram_data_out_c2d_delayed : 32'b0
+                                    ) :
                                     (funct3_reg==3'd5) ? (
                                       (funct7_reg==3'd0) ? {32{1'b1}}:
                                       (funct7_reg==3'd1) ? {32{1'b1}}:
@@ -178,11 +184,14 @@ always @(posedge clk) begin
 
           //If it is 2 cycle transaction
           //then we send the response in two cycles.
-          if ((funct3==3'd4) ||  //cfu_op4 -> read instruction memory
-              (funct3==3'd6)     //cfu_op6 -> read comefa
-              ) begin
+          if (funct3==3'd4) begin  //cfu_op4 -> read instruction memory
             state <= 2;
           end
+
+          if (funct3==3'd6)  begin   //cfu_op6 -> read comefa
+            state <= 3;
+          end
+
           cmd_ready <= 1'b0;
           rsp_valid <= 1'b0;
         end
@@ -208,12 +217,25 @@ always @(posedge clk) begin
         cmd_ready <= 1'b0;
       end
 
+      3: begin
+        if (dram_we_out == 1'b1) begin
+          rsp_valid <= 1'b1;
+          rsp_payload_outputs_0 <= rsp_payload_outputs_0_wire;
+          state <= 0;
+          cmd_ready <= 1'b1;
+        end
+      end 
+
     endcase
     
   end
 end
 
-reg [`AWIDTH-1:0] cram_addr_for_read;
+reg [`AWIDTH+`LOG_NUM_CRAMS-1:0] cram_addr_for_read_full;
+wire [`AWIDTH-1:0] cram_addr_for_read;
+wire [`LOG_NUM_CRAMS-1:0] ram_num_for_read;
+assign cram_addr_for_read = cram_addr_for_read_full[`AWIDTH-1:0];
+assign ram_num_for_read = cram_addr_for_read_full[`LOG_NUM_CRAMS+`AWIDTH-1:`AWIDTH];
 wire pe_top;
 wire pe_bot;
 wire pe_ram0_to_ram1;
@@ -525,50 +547,178 @@ swizzle_dram_to_cram u_swz_d2c (
 reg cram_data_valid;
 reg[31:0] num_elements_to_read;
 reg [`AWIDTH-1:0] starting_addr_while_reading;
-reg [15:0] ram_num_for_reading;
 reg [31:0] data_read_count;
+reg ram_data_last;
+reg first_time;
+/*
 always @(posedge clk) begin
   if (~long_reset_n) begin
     cram_data_valid <= 0;
     data_read_count <= 0;
-    ram_num_for_reading <= 0;
-    cram_addr_for_read <= 0;
+    cram_addr_for_read_full <= 0;
+    ram_data_last <= 0;
+    first_time <= 0;
   end
-  else if (cram_data_valid) begin
-    data_read_count <= data_read_count + 1;
-    cram_addr_for_read <= cram_addr_for_read + 1;
-    if (data_read_count == (num_elements_to_read-1)) begin
-      ram_num_for_reading <= ram_num_for_reading + 1;
-      cram_addr_for_read <= starting_addr_while_reading;
-      data_read_count <= 0;
-    end
+  else if (swizzle_c2d_ready) begin
     cram_data_valid <= 0;
   end
-  else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM)) begin
+  else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
+    if (first_time==0) begin
     cram_data_valid <= 1;
-    if (data_read_count==0) begin
-      starting_addr_while_reading <= cmd_payload_inputs_0;
-      cram_addr_for_read <= cmd_payload_inputs_0;
-    end
+    first_time <= 1; 
+    data_read_count <= 0;
+    starting_addr_while_reading <= cmd_payload_inputs_0;
+    cram_addr_for_read_full <= cmd_payload_inputs_0;
     num_elements_to_read <= cmd_payload_inputs_1;
+    ram_data_last <= 0;
+    end
+    else begin
+    cram_data_valid <= 1;
+    cram_addr_for_read_full <= cram_addr_for_read + 4;
+    data_read_count <= data_read_count + 1;
+    first_time <= 0;
+    end
+  end
+  //else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
+  //  cram_data_valid <= 1;
+  //  first_time <= 0;
+  //  cram_addr_for_read_full <= cram_addr_for_read + 4;
+  //  ram_data_last <= 0;
+  //end
+  else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==1)) begin
+    cram_data_valid <= 1;
+    ram_data_last <= 1;
+    first_time <= 0;
+    cram_addr_for_read_full <= cmd_payload_inputs_0; //starting address
+    num_elements_to_read <= cmd_payload_inputs_1;
+  end
+  else if (cram_data_valid && first_time) begin
+    data_read_count <= data_read_count + 1;
+    cram_addr_for_read_full <= cram_addr_for_read + 4;
+    ram_data_last <= 0;
+  end
+  else begin
+    cram_data_valid <= 0;
+  end
+end
+*/
+
+reg [2:0] cram_read_state;
+
+always @(posedge clk) begin
+  if (~long_reset_n) begin
+    cram_data_valid <= 0;
+    data_read_count <= 0;
+    cram_addr_for_read_full <= 0;
+    cram_read_state <= 0;
+  end
+  else begin
+    case (cram_read_state)
+    0: begin
+      if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
+        cram_data_valid <= 1;
+        data_read_count <= 0;
+        starting_addr_while_reading <= cmd_payload_inputs_0;
+        cram_addr_for_read_full <= cmd_payload_inputs_0;
+        num_elements_to_read <= cmd_payload_inputs_1;
+        cram_read_state <= 1;
+      end
+      else begin
+        ram_data_last <= 0;
+        cram_data_valid <= 0;  
+      end
+    end  
+
+    1: begin
+      if (data_read_count == `COUNT_TO_SWITCH_BUFFERS) begin
+        cram_read_state <= 3;
+        cram_data_valid <= 0;
+        cram_addr_for_read_full <= starting_addr_while_reading+1;
+        starting_addr_while_reading<=starting_addr_while_reading+1;
+      end 
+      else begin
+        cram_data_valid <= 1;
+        cram_addr_for_read_full <= cram_addr_for_read + 4;
+        data_read_count <= data_read_count + 1;
+      end
+      ram_data_last <= 0;
+    end 
+
+    2: begin
+      if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin 
+        cram_data_valid <= 1;
+        data_read_count <= data_read_count + 1;
+        ram_data_last <= 0;
+        if ((data_read_count == 2*`COUNT_TO_SWITCH_BUFFERS-1) || (data_read_count == 3*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+          cram_addr_for_read_full <= starting_addr_while_reading+1;
+          starting_addr_while_reading<=starting_addr_while_reading+1;
+        end
+        else begin
+          cram_addr_for_read_full <= cram_addr_for_read + 4;
+        end
+      end
+      else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==1)) begin //last
+        cram_data_valid <= 1;
+        data_read_count <= data_read_count + 1;
+        cram_addr_for_read_full <= cram_addr_for_read + 4;
+        ram_data_last <= 1;
+        cram_read_state <= 0;
+      end
+      else begin
+        cram_data_valid <= 0;
+      end
+    end
+
+    3: begin
+      cram_data_valid <= 0;
+      cram_read_state <= 2;
+    end
+    endcase
   end
 end
 
+
 wire [`DWIDTH-1:0] transposed_data_from_cram;
-assign transposed_data_from_cram = (ram_num_for_reading==0) ? cram0_q2 :
-                                 (ram_num_for_reading==1) ? cram1_q2 :
-                                 (ram_num_for_reading==2) ? cram2_q2 :
-                                 (ram_num_for_reading==3) ? cram3_q2 : 40'b0;
+assign transposed_data_from_cram = (ram_num_for_read==0) ? cram0_q2 :
+                                   (ram_num_for_read==1) ? cram1_q2 :
+                                   (ram_num_for_read==2) ? cram2_q2 :
+                                   (ram_num_for_read==3) ? cram3_q2 : 40'b0;
+
+reg cram_data_valid_delayed;
+always @(posedge clk) begin
+  cram_data_valid_delayed <= cram_data_valid;
+end
+
+wire [`DWIDTH-1:0] transposed_data_c2d;
+generate for (i=0;i<`DWIDTH;i=i+1) begin
+  assign transposed_data_c2d[i] = transposed_data_from_cram[`DWIDTH-1-i];
+end endgenerate
+
+reg ram_data_last_delayed;
+always @(posedge clk) begin
+  ram_data_last_delayed <= ram_data_last;
+end
 
 //TODO: Need to fix the interface to be cleaner. May be based on address.
 swizzle_cram_to_dram u_swz_c2d (
-  .data_valid(cram_data_valid),
+  .data_valid(cram_data_valid_delayed),
   .clk(clk),
   .resetn(long_reset_n),
-  .ram_data_in(transposed_data_from_cram),
+  .ram_data_in(transposed_data_c2d),
+  .ram_data_last(ram_data_last_delayed),
   .mem_ctrl_data_out(dram_data_out), //goes to CPU for now
   .mem_ctrl_addr(dram_addr_out), //unconnected for now
-  .mem_ctrl_we(dram_we_out) //unconnected for now
+  .mem_ctrl_addr_start(0), //TODO: hardcoding for now; need to be configured by CPU
+  .mem_ctrl_we(dram_we_out), //unconnected for now
+  .ready(swizzle_c2d_ready)
 );
+
+generate for (i=0;i<`DWIDTH;i=i+1) begin
+  assign dram_data_out_c2d[i] = dram_data_out[`DWIDTH-1-i];
+end endgenerate
+
+always @(posedge clk) begin
+  dram_data_out_c2d_delayed <= dram_data_out_c2d;
+end
 
 endmodule
