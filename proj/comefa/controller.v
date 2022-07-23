@@ -156,7 +156,9 @@ always @(*) begin
 end
 
 reg [1:0] predicate;
-reg [4:0] dummy;
+reg [2:0] dummy;
+reg b_sel;
+reg b_data;
 reg write_en;
 reg [1:0] write_sel;
 reg port;
@@ -172,7 +174,7 @@ reg [6:0] src1;
 reg [3:0] state;
 
 assign exec_instr_addr = `CMD_ADDR;
-assign exec_instruction = {predicate, dummy, write_en, write_sel, port, c_rst, c_en, m_rst, m_en, truth_table, dst, src2, src1};
+assign exec_instruction = {predicate, dummy, b_sel, b_data, write_en, write_sel, port, c_rst, c_en, m_rst, m_en, truth_table, dst, src2, src1};
 
 integer counter;
 integer i, j;
@@ -182,7 +184,9 @@ always @(posedge clk) begin
     if (~rstn || ~start) begin
         execute_0 <= 1'b0;
         predicate <= 2'b00;
-        dummy <= 5'b00000;
+        dummy <= 3'b000;
+        b_sel <= 1'b0;
+        b_data <= 1'b0;
         write_en <= 1'b0;
         write_sel <= 2'b00;
         port <= 1'b0; 
@@ -213,7 +217,7 @@ always @(posedge clk) begin
                 cur_instr_done <= 1'b0;
                 state <= 4'b0001;
                 predicate <= 2'b11; //enable writing
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -223,18 +227,23 @@ always @(posedge clk) begin
                 m_en <= 1'b0;  //no masking required
                 if (opcode==`ADD) begin
                     truth_table <= 4'b0110; //xor
+                    b_sel <= 1'b0;
+                    b_data <= 1'b0;
                 end
                 else begin //opcode is ADD_CONST
+                    truth_table <= 4'b0110; //xor
+                    b_sel <= 1'b1;
+                    b_data <= rf_val[0];
                     //to perform an xor internally, we need to send
                     //b,b,b',b' into the truth table.
-                    //truth_table <= {~rf_val[0], rf_val[0], rf_val[0], ~rf_val[0]};
-                    //truth_table <= {rf_val[0], ~rf_val[0], rf_val[0], ~rf_val[0]};
-                    if (rf_val[0]==1'b1) begin
-                        truth_table <= 4'b0101;
-                    end
-                    else begin
-                        truth_table <= 4'b1010;
-                    end
+                    //truth_table <= {~rf_val_reg[0], rf_val_reg[0], rf_val_reg[0], ~rf_val_reg[0]};
+                    //truth_table <= {rf_val_reg[0], ~rf_val_reg[0], rf_val_reg[0], ~rf_val_reg[0]};
+                    //if (rf_val[0]==1'b1) begin
+                    //    truth_table <= 4'b0101;
+                    //end
+                    //else begin
+                    //    truth_table <= 4'b1010;
+                    //end
                     //Shift rf_val by 1
                     rf_val_reg <= rf_val >> 1;
                 end
@@ -256,7 +265,7 @@ always @(posedge clk) begin
                     one_cycle_left <= 1'b0;
                 end
                 predicate <= 2'b11; //enable writing
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -266,18 +275,23 @@ always @(posedge clk) begin
                 m_en <= 1'b0;  //no masking required
                 if (opcode==`ADD) begin
                     truth_table <= 4'b0110; //xor
+                    b_sel <= 1'b0;
+                    b_data <= 1'b0;
                 end
                 else begin //opcode is ADD_CONST
+                    truth_table <= 4'b0110; //xor
+                    b_sel <= 1'b1;
+                    b_data <= rf_val_reg[0];
                     //to perform an xor internally, we need to send
                     //b,b,b',b' into the truth table.
                     //truth_table <= {~rf_val_reg[0], rf_val_reg[0], rf_val_reg[0], ~rf_val_reg[0]};
                     //truth_table <= {rf_val_reg[0], ~rf_val_reg[0], rf_val_reg[0], ~rf_val_reg[0]};
-                    if (rf_val_reg[0]==1'b1) begin
-                        truth_table <= 4'b0101;
-                    end
-                    else begin
-                        truth_table <= 4'b1010;
-                    end
+                    //if (rf_val_reg[0]==1'b1) begin
+                    //    truth_table <= 4'b0101;
+                    //end
+                    //else begin
+                    //    truth_table <= 4'b1010;
+                    //end
                     //Shift rf_val by 1
                     rf_val_reg <= rf_val_reg >> 1;
                 end
@@ -292,7 +306,9 @@ always @(posedge clk) begin
                 cur_instr_done <= 1'b1;
                 state <= 4'b0000;
                 predicate <= 2'b11; //enable writing
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel2 mux selects carry
                 port <= 1'b1; //port 2 enabled for write
@@ -326,7 +342,9 @@ always @(posedge clk) begin
                     i <= 0;
                 end
                 predicate <= 2'b11; //enable writing
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -346,7 +364,9 @@ always @(posedge clk) begin
                 cur_instr_done <= 1'b0;
                 state <= 4'b0010;
                 predicate <= 2'b11; //don't care
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b0;
                 write_sel <= 2'b01; //don't care
                 port <= 1'b0; //don't care
@@ -371,7 +391,9 @@ always @(posedge clk) begin
                     j <= 1;
                 end
                 predicate <= 2'b00; //masks
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -391,7 +413,9 @@ always @(posedge clk) begin
                 cur_instr_done <= 1'b0;
                 state <= 4'b0100;
                 predicate <= 2'b11; //don't care
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b0; //do not write
                 write_sel <= 2'b01; //don't care
                 port <= 1'b0; //don't care
@@ -415,7 +439,9 @@ always @(posedge clk) begin
                     state <= 4'b0101;
                 end
                 predicate <= 2'b00; //masks
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -437,7 +463,9 @@ always @(posedge clk) begin
             4'b0101: begin
                 execute_0 <= 1'b1;
                 predicate <= 2'b00; //masks
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1; //write
                 write_sel <= 2'b01; //select carry
                 port <= 1'b1; //port 2
@@ -481,7 +509,9 @@ always @(posedge clk) begin
                     i <= 0;
                 end
                 predicate <= 2'b11; //enable writing
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -506,7 +536,9 @@ always @(posedge clk) begin
                     j <= 1;
                 end
                 predicate <= 2'b11; //vdd
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
@@ -532,7 +564,9 @@ always @(posedge clk) begin
                     execute_0 <= 1'b1;
                     cur_instr_done <= 1'b0;
                     predicate <= 2'b00; //don't care
-                    dummy <= 5'b00000;
+                    dummy <= 3'b000;
+                    b_sel <= 1'b0;
+                    b_data <= 1'b0;
                     write_en <= 1'b0;
                     write_sel <= 2'b01; //write_sel1 mux selects sum
                     port <= 1'b0; //port 1 enabled for write
@@ -569,7 +603,9 @@ always @(posedge clk) begin
                         rf_val_reg <= rf_val_reg >> 1;
                     end
                     predicate <= 2'b11; //vdd
-                    dummy <= 5'b00000;
+                    dummy <= 3'b000;
+                    b_sel <= 1'b0;
+                    b_data <= 1'b0;
                     write_en <= 1'b1;
                     write_sel <= 2'b01; //write_sel1 mux selects sum
                     port <= 1'b0; //port 1 enabled for write
@@ -592,7 +628,9 @@ always @(posedge clk) begin
             4'b0101: begin
                 execute_0 <= 1'b1;
                 predicate <= 2'b11; //vdd
-                dummy <= 5'b00000;
+                dummy <= 3'b000;
+                b_sel <= 1'b0;
+                b_data <= 1'b0;
                 write_en <= 1'b1; //write
                 write_sel <= 2'b01; //select carry
                 port <= 1'b1; //port 2

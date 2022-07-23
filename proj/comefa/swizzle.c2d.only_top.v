@@ -55,14 +55,14 @@ always @(posedge clk) begin
   else begin
     case(write_state)
     0: begin
-      if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-2))) begin
+      if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
         ready <= 1;
         in_data_counter <= in_data_counter + 1;
       end
-      else if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
-        write_state <= 1;
+      else if (data_valid && (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS))) begin
+        write_state <= 2;
         direction_of_dataflow <= ~direction_of_dataflow;
-        in_data_counter <= in_data_counter + 1;
+        //in_data_counter <= in_data_counter + 1;
         ready <= 0;
       end
       else if (data_valid) begin
@@ -93,25 +93,33 @@ always @(posedge clk) begin
       end  
       ready <= 0;
     end
+
+    2: begin
+      //dont want to increment in_data_counter
+      write_state <= 1;
+    end
     endcase
   end
 end
 
 reg [1:0] read_state;
+reg flag;
 always @(posedge clk) begin
   if (~resetn) begin
     out_data_counter  <= 0;
     mem_ctrl_we <= 0;
     read_state <= 0;
+    flag <= 0;
   end
   else begin
     case(read_state)
     0: begin
-        if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1))) begin
+        if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS))) begin
           mem_ctrl_we <= 1'b0;
           mem_ctrl_addr <= mem_ctrl_addr_start;
           out_data_counter <= 0;
           read_state <= 1;
+          flag <= 1;
         end
         else begin
           mem_ctrl_we <= 1'b0;
@@ -119,7 +127,13 @@ always @(posedge clk) begin
     end
 
     1: begin
-        if (data_valid && ram_data_last) begin
+        if (flag) begin //one extra here
+          flag <= 0;
+          mem_ctrl_we <= 1'b1;
+          out_data_counter <= out_data_counter+1;
+          read_state <= 1;
+        end
+        else if (data_valid && ram_data_last) begin
           read_state <= 2;
           mem_ctrl_we <= 1'b1;
 	        mem_ctrl_addr <= mem_ctrl_addr + 1;
@@ -172,9 +186,12 @@ assign mem_ctrl_data_out = direction_of_dataflow ? data_out_ping : data_out_pong
 //is connected to data_in. that's why we also don't enable signals 
 //for the flops in the buffers
 
+wire data_valid_internal;
+assign data_valid_internal = data_valid & ~(ready);
+
 wire ping_valid;
 //assign ping_valid = direction_of_dataflow ? out_valid : data_valid;
-assign ping_valid = data_valid;
+assign ping_valid = data_valid_internal;
 
 //this is the left of the figure of swizzle logic we drew in the mantra paper
 ping_buffer u_ping (
@@ -187,7 +204,7 @@ ping_buffer u_ping (
 
 wire pong_valid;
 //assign pong_valid = opp_direction_of_dataflow ? out_valid : data_valid;
-assign pong_valid = data_valid;
+assign pong_valid = data_valid_internal;
 
 //this is the right of the figure of swizzle logic we drew in the mantra paper
 pong_buffer u_pong (

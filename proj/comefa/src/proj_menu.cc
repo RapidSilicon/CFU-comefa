@@ -119,10 +119,12 @@ void do_exercise_cfu_op3(void) {
   printf("Performed %d comparisons", count);
 }
 
-  unsigned char A[160*4];
-  unsigned char B[160*4];
-  unsigned char C_expect[160*4];
-  unsigned char C[160*4];
+unsigned char A[160*4];
+unsigned char B[160*4];
+unsigned char C_expect[160*4];
+unsigned char C[160*4];
+unsigned char D = 1;
+unsigned char D_expect[160*4];
 
 // Test template instruction
 void do_exercise_cfu_op4(void) {
@@ -179,6 +181,11 @@ void do_exercise_cfu_op5(void) {
     C_expect[i+1*160] = A[i+1*160] + B[i+1*160];
     C_expect[i+2*160] = A[i+2*160] + B[i+2*160];
     C_expect[i+3*160] = A[i+3*160] + B[i+3*160];
+
+    D_expect[i+0*160] = C_expect[i+0*160] + D;
+    D_expect[i+1*160] = C_expect[i+1*160] + D;
+    D_expect[i+2*160] = C_expect[i+2*160] + D;
+    D_expect[i+3*160] = C_expect[i+3*160] + D;
   }
 
   int cfu = 0;
@@ -241,8 +248,8 @@ void do_exercise_cfu_op6(void) {
   int count = 0;
   int num_elements_to_read = 160; //160 elements in 1 RAM
 
-  //Results are available in row 22
-  unsigned int row_addr = 22;   //7 bits (6:0)
+  //Results are available in row 34
+  unsigned int row_addr = 34;   //7 bits (6:0)
   unsigned int ram_addr = row_addr<<2;  //need to shift left by 2 to get from row address
                                         //to normal addr coz the column muxing factor is 4.
                                         //total = 9 bits (8:0)
@@ -283,11 +290,11 @@ void do_exercise_cfu_op6(void) {
       }
       
       //Match with expected value
-      if (C[i] == C_expect[i]) {
+      if (C[i] == D_expect[i]) {
         printf("Pass\n");
       }
       else {
-        printf("Fail\n");
+        printf("Fail. Expected = %08x, Observed = %08x\n", D_expect[i], C[i]);
       }
 
       count++;
@@ -348,11 +355,12 @@ void do_exercise_cfu_op7_write_rf(void) {
   //for (int a = 0x0; a < 0x64; a += 0x1) {
       int expected = 0xffffffff;
       int cfu;
+      //              data addr
       cfu = cfu_op7(2, 12, 0); 
       if (cfu != expected) {
         printf("\n***FAIL\n");
       }
-      cfu = cfu_op7(2, 13, 1); 
+      cfu = cfu_op7(2, D, 1); 
       if (cfu != expected) {
         printf("\n***FAIL\n");
       }
@@ -382,8 +390,8 @@ struct Menu MENU = {
         MENU_ITEM('5', "exercise cfu op5 - write comefa", do_exercise_cfu_op5),
         MENU_ITEM('6', "exercise cfu op6 - read comefa", do_exercise_cfu_op6),
         MENU_ITEM('7', "exercise cfu op7 - start execution", do_exercise_cfu_op7_start),
-        MENU_ITEM('8', "exercise cfu op7 - check status of execution", do_exercise_cfu_op7_check),
-        MENU_ITEM('9', "exercise cfu op7 - Set registers", do_exercise_cfu_op7_write_rf),
+        MENU_ITEM('8', "exercise cfu op8 - check status of execution", do_exercise_cfu_op7_check),
+        MENU_ITEM('9', "exercise cfu op9 - Set registers", do_exercise_cfu_op7_write_rf),
         MENU_ITEM('h', "say Hello", do_hello_world),
         MENU_END,
     },

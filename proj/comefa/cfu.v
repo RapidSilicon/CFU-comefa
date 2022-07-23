@@ -115,8 +115,8 @@ assign rsp_payload_outputs_0_wire =
                                       (funct7_reg==7'd2) ? {32{1'b1}} : 32'b0
                                     ) :
                                     (funct3_reg==3'd6) ? (
-                                      (funct7_reg==3'd0) ? dram_data_out_c2d_delayed :  //MSB 8 bits are ignored
-                                      (funct7_reg==3'd1) ? dram_data_out_c2d_delayed : 32'b0
+                                      (funct7_reg==3'd0) ? dram_data_out_c2d:  //MSB 8 bits are ignored
+                                      (funct7_reg==3'd1) ? dram_data_out_c2d: 32'b0
                                     ) :
                                     (funct3_reg==3'd5) ? (
                                       (funct7_reg==3'd0) ? {32{1'b1}}:
@@ -389,7 +389,8 @@ dpram #(.AWIDTH(`AWIDTH), .NUM_WORDS(`NUM_LOCATIONS), .DWIDTH(`STORED_INST_DATA_
 //For now, instead of sending instructions from CPU,
 //I'm just loading them from a file.
 initial begin
-  $readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.eltwiseadd.dat", u_instr_ram.ram);
+  //$readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.eltwiseadd.dat", u_instr_ram.ram);
+  $readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.rfadd.dat", u_instr_ram.ram);
 end
 
 /////////////////////////////////////////
@@ -616,7 +617,7 @@ always @(posedge clk) begin
     case (cram_read_state)
     0: begin
       if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
-        cram_data_valid <= 1;
+        cram_data_valid <= 0;
         data_read_count <= 0;
         starting_addr_while_reading <= cmd_payload_inputs_0;
         cram_addr_for_read_full <= cmd_payload_inputs_0;
@@ -630,7 +631,7 @@ always @(posedge clk) begin
     end  
 
     1: begin
-      if (data_read_count == `COUNT_TO_SWITCH_BUFFERS) begin
+      if (data_read_count == `COUNT_TO_SWITCH_BUFFERS+1) begin
         cram_read_state <= 3;
         cram_data_valid <= 0;
         cram_addr_for_read_full <= starting_addr_while_reading+1;
@@ -649,7 +650,7 @@ always @(posedge clk) begin
         cram_data_valid <= 1;
         data_read_count <= data_read_count + 1;
         ram_data_last <= 0;
-        if ((data_read_count == 2*`COUNT_TO_SWITCH_BUFFERS-1) || (data_read_count == 3*`COUNT_TO_SWITCH_BUFFERS-1)) begin
+        if ((data_read_count == 2*`COUNT_TO_SWITCH_BUFFERS) || (data_read_count == 3*`COUNT_TO_SWITCH_BUFFERS)) begin
           cram_addr_for_read_full <= starting_addr_while_reading+1;
           starting_addr_while_reading<=starting_addr_while_reading+1;
         end
@@ -701,11 +702,11 @@ end
 
 //TODO: Need to fix the interface to be cleaner. May be based on address.
 swizzle_cram_to_dram u_swz_c2d (
-  .data_valid(cram_data_valid_delayed),
+  .data_valid(cram_data_valid),
   .clk(clk),
   .resetn(long_reset_n),
   .ram_data_in(transposed_data_c2d),
-  .ram_data_last(ram_data_last_delayed),
+  .ram_data_last(ram_data_last),
   .mem_ctrl_data_out(dram_data_out), //goes to CPU for now
   .mem_ctrl_addr(dram_addr_out), //unconnected for now
   .mem_ctrl_addr_start(0), //TODO: hardcoding for now; need to be configured by CPU
