@@ -781,7 +781,7 @@ wire write_abort;
 
 wire s_axis_read_desc_ready;
 wire [TAG_WIDTH-1:0] m_axis_read_desc_status_tag;
-wire m_axis_read_desc_status_error;
+wire [3:0] m_axis_read_desc_status_error;
 wire m_axis_read_desc_status_valid;
 wire [AXIS_DATA_WIDTH-1:0] m_axis_read_data_tdata;
 wire [AXIS_KEEP_WIDTH-1:0] m_axis_read_data_tkeep;
@@ -796,7 +796,7 @@ wire [TAG_WIDTH-1:0] m_axis_write_desc_status_tag;
 wire [AXIS_ID_WIDTH-1:0] m_axis_write_desc_status_id;
 wire [AXIS_DEST_WIDTH-1:0] m_axis_write_desc_status_dest;
 wire [AXIS_USER_WIDTH-1:0] m_axis_write_desc_status_user;
-wire m_axis_write_desc_status_error;
+wire [3:0] m_axis_write_desc_status_error;
 wire m_axis_write_desc_status_valid;
 wire s_axis_write_data_tready;
 
