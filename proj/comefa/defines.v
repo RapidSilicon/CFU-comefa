@@ -44,7 +44,7 @@
 `define STORED_INST_DATA_WIDTH 40
 
 `define OPCODE_WIDTH        4
-`define PRECISION_WIDTH     4
+`define PRECISION_WIDTH     5
 `define ROW_ADDR_WIDTH      7
 `define RF_ADDR_WIDTH       4
 `define LEVELS_WIDTH        3

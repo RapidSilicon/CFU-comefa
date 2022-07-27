@@ -98,14 +98,51 @@ void do_exercise_cfu_op2(void) {
 */
 
 // Test template instruction
+void do_exercise_cfu_op3(void) {
+  puts("\nExercise CFU Op3 aka Write to INST_RAM\n");
+  int count = 0;
+  for (int a = 0x0; a < 0x64; a += 0x1) {
+      int expected = 0xffffffff;
+      //Instructions are 32 bits.
+      //We write 1 instruction in 1 cycle to 1 address.
+      //One argument of the instruction is the data (i.e the macro instruction to be stored in the RAM)
+      //Second argument of the instruction is the address to which it should be written.
+      int cfu = cfu_op3(0, a, a); 
+      printf("Writing data %08x to address %08x\n", a, a);
+      printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, a, expected, cfu);
+      //if (cfu != expected) {
+      //  printf("\n***FAIL\n");
+      //  return;
+      //}
+      count++;
+  }
+  printf("Performed %d comparisons", count);
+}
 
 unsigned char A[160*4];
-unsigned char X[160*4];
 unsigned char B[160*4];
-unsigned char Y[160*4];
-unsigned int C_expect[160*4];
-unsigned int C[160*4];
+unsigned char C_expect[160*4];
+unsigned char C[160*4];
+unsigned char D = 1;
+unsigned char D_expect[160*4];
 
+// Test template instruction
+void do_exercise_cfu_op4(void) {
+  puts("\nExercise CFU Op4 aka Read from INST_RAM\n");
+  int count = 0;
+  for (int a = 0x0; a < 0x64; a += 0x1) {
+      int expected = a;
+      int cfu = cfu_op4(0, a, 0);
+      printf("Read data %08x from address %08x\n", cfu, a);
+      printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
+      //if (cfu != expected) {
+      //  printf("\n***FAIL\n");
+      //  return;
+      //}
+      count++;
+  }
+  printf("Performed %d comparisons", count);
+}
 
 // Test template instruction
 void do_exercise_cfu_op5(void) {
@@ -123,8 +160,8 @@ void do_exercise_cfu_op5(void) {
   //Let's send the address of the row we need to write to.
   //Row addresses are 7 bits.
 
-  //Say, we want the data to be located at row address 0.
-  unsigned int row_addr = 0; //we increment in the loop
+  //Say, we want the data to be located at row address 4.
+  unsigned int row_addr = 3; //we increment in the loop
   unsigned int ram_addr = row_addr<<2;     //need to shift left by 2 to get from row address
                                            //to normal addr coz the column muxing factor is 4.
 
@@ -132,33 +169,23 @@ void do_exercise_cfu_op5(void) {
     //Keeping all 4 parts of the arrays the same for easy debug.
     //This ensures that the contents of each RAM are the same.
     A[i+0*160] = i;
-    X[i+0*160] = i;
     B[i+0*160] = i+10;
-    Y[i+0*160] = i+10;
-
     A[i+1*160] = i;
-    X[i+1*160] = i;
     B[i+1*160] = i+10;
-    Y[i+1*160] = i+10;
-    
     A[i+2*160] = i;
-    X[i+2*160] = i;
     B[i+2*160] = i+10;
-    Y[i+2*160] = i+10;
-
     A[i+3*160] = i;
-    X[i+3*160] = i;
     B[i+3*160] = i+10;
-    Y[i+3*160] = i+10;
 
-    C_expect[i+0*160] = int(A[i+0*160])*int(X[i+0*160]) + int(B[i+0*160])*int(Y[i+0*160]);
-    C_expect[i+1*160] = int(A[i+1*160])*int(X[i+1*160]) + int(B[i+1*160])*int(Y[i+1*160]);
-    C_expect[i+2*160] = int(A[i+2*160])*int(X[i+2*160]) + int(B[i+2*160])*int(Y[i+2*160]);
-    C_expect[i+3*160] = int(A[i+3*160])*int(X[i+3*160]) + int(B[i+3*160])*int(Y[i+3*160]);
-    //C_expect[i+0*160] = int(B[i+0*160])*int(Y[i+0*160]);
-    //C_expect[i+1*160] = int(B[i+1*160])*int(Y[i+1*160]);
-    //C_expect[i+2*160] = int(B[i+2*160])*int(Y[i+2*160]);
-    //C_expect[i+3*160] = int(B[i+3*160])*int(Y[i+3*160]);
+    C_expect[i+0*160] = A[i+0*160] + B[i+0*160];
+    C_expect[i+1*160] = A[i+1*160] + B[i+1*160];
+    C_expect[i+2*160] = A[i+2*160] + B[i+2*160];
+    C_expect[i+3*160] = A[i+3*160] + B[i+3*160];
+
+    D_expect[i+0*160] = C_expect[i+0*160] + D;
+    D_expect[i+1*160] = C_expect[i+1*160] + D;
+    D_expect[i+2*160] = C_expect[i+2*160] + D;
+    D_expect[i+3*160] = C_expect[i+3*160] + D;
   }
 
   int cfu = 0;
@@ -170,11 +197,10 @@ void do_exercise_cfu_op5(void) {
   for (unsigned int i = 0; i < 160*4; i += 1) {
       int expected = 0xffffffff;
       
-      //7:0 -> A
-      //15:8 -> X
-      //23:16 -> B
-      //31:24 -> Y
-      unsigned int lower =  (Y[i]<<24) | (B[i]<<16) | (X[i]<<8) |  A[i];
+      //We send 8 bits of an element of A and 8 bits of an element of B in the lower part of the data
+      //(actually the lower 40 bits).
+      //When the data gets transposed, the A bits and B bits will be in consecutive rows.
+      unsigned int lower = (B[i]<<8) |  A[i];
 
 
       if ((i>0) && (i%160==0)) {
@@ -212,6 +238,8 @@ void do_exercise_cfu_op5(void) {
       count++;
   }
   printf("Sent %d values", count);
+
+
 }
 
 // Test template instruction
@@ -220,8 +248,8 @@ void do_exercise_cfu_op6(void) {
   int count = 0;
   int num_elements_to_read = 160; //160 elements in 1 RAM
 
-  //Results are available in row 80
-  unsigned int row_addr = 80;   //7 bits (6:0)
+  //Results are available in row 34
+  unsigned int row_addr = 34;   //7 bits (6:0)
   unsigned int ram_addr = row_addr<<2;  //need to shift left by 2 to get from row address
                                         //to normal addr coz the column muxing factor is 4.
                                         //total = 9 bits (8:0)
@@ -262,11 +290,11 @@ void do_exercise_cfu_op6(void) {
       }
       
       //Match with expected value
-      if (C[i] == C_expect[i]) {
+      if (C[i] == D_expect[i]) {
         printf("Pass\n");
       }
       else {
-        printf("Fail. Expected = %08x, Observed = %08x\n", C_expect[i], C[i]);
+        printf("Fail. Expected = %08x, Observed = %08x\n", D_expect[i], C[i]);
       }
 
       count++;
@@ -281,8 +309,8 @@ void do_exercise_cfu_op7_start(void) {
   int cfu;
   //for (int a = 0x0; a < 0x64; a += 0x1) {
       //int expected = a;
-      int inst_start_addr = 3-1;
-      int inst_end_addr = 5-1;
+      int inst_start_addr = 2;
+      int inst_end_addr = 3;
       cfu = cfu_op7(2, inst_start_addr, inst_end_addr);  //configure start and end addresses
 
       cfu = cfu_op7(0, 0, 0); //actually start the computation
@@ -332,7 +360,7 @@ void do_exercise_cfu_op7_write_rf(void) {
       if (cfu != expected) {
         printf("\n***FAIL\n");
       }
-      cfu = cfu_op7(2, 13, 1); 
+      cfu = cfu_op7(2, D, 1); 
       if (cfu != expected) {
         printf("\n***FAIL\n");
       }
@@ -357,11 +385,13 @@ struct Menu MENU = {
     "project",
     {
         MENU_ITEM('0', "exercise cfu op0 - reset and test", do_exercise_cfu_op0),
+        MENU_ITEM('3', "exercise cfu op3 - write iram", do_exercise_cfu_op3),
+        MENU_ITEM('4', "exercise cfu op4 - read iram", do_exercise_cfu_op4),
         MENU_ITEM('5', "exercise cfu op5 - write comefa", do_exercise_cfu_op5),
         MENU_ITEM('6', "exercise cfu op6 - read comefa", do_exercise_cfu_op6),
         MENU_ITEM('7', "exercise cfu op7 - start execution", do_exercise_cfu_op7_start),
         MENU_ITEM('8', "exercise cfu op8 - check status of execution", do_exercise_cfu_op7_check),
-        MENU_ITEM('9', "exercise cfu op9 - set registers", do_exercise_cfu_op7_write_rf),
+        MENU_ITEM('9', "exercise cfu op9 - Set registers", do_exercise_cfu_op7_write_rf),
         MENU_ITEM('h', "say Hello", do_hello_world),
         MENU_END,
     },

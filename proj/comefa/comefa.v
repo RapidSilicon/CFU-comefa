@@ -309,6 +309,16 @@ end
 /////////////////////////////////////////////////
 // Debug signals
 /////////////////////////////////////////////////
+
+wire [159:0] row0;
+assign row0 = ram_internal[0];
+
+wire [159:0] row1;
+assign row1 = ram_internal[1];
+
+wire [159:0] row2;
+assign row2 = ram_internal[2];
+
 wire [159:0] row3;
 assign row3 = ram_internal[3];
 
@@ -506,6 +516,183 @@ assign row67 = ram_internal[67];
 
 wire [159:0] row68;
 assign row68 = ram_internal[68];
+
+wire [159:0] row69;
+assign row69 = ram_internal[69];
+
+wire [159:0] row70;
+assign row70 = ram_internal[70];
+
+wire [159:0] row71;
+assign row71 = ram_internal[71];
+
+wire [159:0] row72;
+assign row72 = ram_internal[72];
+
+wire [159:0] row73;
+assign row73 = ram_internal[73];
+
+wire [159:0] row74;
+assign row74 = ram_internal[74];
+
+wire [159:0] row75;
+assign row75 = ram_internal[75];
+
+wire [159:0] row76;
+assign row76 = ram_internal[76];
+
+wire [159:0] row77;
+assign row77 = ram_internal[77];
+
+wire [159:0] row78;
+assign row78 = ram_internal[78];
+
+wire [159:0] row79;
+assign row79 = ram_internal[79];
+
+wire [159:0] row80;
+assign row80 = ram_internal[80];
+
+wire [159:0] row81;
+assign row81 = ram_internal[81];
+
+wire [159:0] row82;
+assign row82 = ram_internal[82];
+
+wire [159:0] row83;
+assign row83 = ram_internal[83];
+
+wire [159:0] row84;
+assign row84 = ram_internal[84];
+
+wire [159:0] row85;
+assign row85 = ram_internal[85];
+
+wire [159:0] row86;
+assign row86 = ram_internal[86];
+
+wire [159:0] row87;
+assign row87 = ram_internal[87];
+
+wire [159:0] row88;
+assign row88 = ram_internal[88];
+
+wire [159:0] row89;
+assign row89 = ram_internal[89];
+
+wire [159:0] row90;
+assign row90 = ram_internal[90];
+
+wire [159:0] row91;
+assign row91 = ram_internal[91];
+
+wire [159:0] row92;
+assign row92 = ram_internal[92];
+
+wire [159:0] row93;
+assign row93 = ram_internal[93];
+
+wire [159:0] row94;
+assign row94 = ram_internal[94];
+
+wire [159:0] row95;
+assign row95 = ram_internal[95];
+
+wire [159:0] row96;
+assign row96 = ram_internal[96];
+
+wire [159:0] row97;
+assign row97 = ram_internal[97];
+
+wire [159:0] row98;
+assign row98 = ram_internal[98];
+
+wire [159:0] row99;
+assign row99 = ram_internal[99];
+
+wire [159:0] row100;
+assign row100 = ram_internal[100];
+
+wire [159:0] row101;
+assign row101 = ram_internal[101];
+
+wire [159:0] row102;
+assign row102 = ram_internal[102];
+
+wire [159:0] row103;
+assign row103 = ram_internal[103];
+
+wire [159:0] row104;
+assign row104 = ram_internal[104];
+
+wire [159:0] row105;
+assign row105 = ram_internal[105];
+
+wire [159:0] row106;
+assign row106 = ram_internal[106];
+
+wire [159:0] row107;
+assign row107 = ram_internal[107];
+
+wire [159:0] row108;
+assign row108 = ram_internal[108];
+
+wire [159:0] row109;
+assign row109 = ram_internal[109];
+
+wire [159:0] row110;
+assign row110 = ram_internal[110];
+
+wire [159:0] row111;
+assign row111 = ram_internal[111];
+
+wire [159:0] row112;
+assign row112 = ram_internal[112];
+
+wire [159:0] row113;
+assign row113 = ram_internal[113];
+
+wire [159:0] row114;
+assign row114 = ram_internal[114];
+
+wire [159:0] row115;
+assign row115 = ram_internal[115];
+
+wire [159:0] row116;
+assign row116 = ram_internal[116];
+
+wire [159:0] row117;
+assign row117 = ram_internal[117];
+
+wire [159:0] row118;
+assign row118 = ram_internal[118];
+
+wire [159:0] row119;
+assign row119 = ram_internal[119];
+
+wire [159:0] row120;
+assign row120 = ram_internal[120];
+
+wire [159:0] row121;
+assign row121 = ram_internal[121];
+
+wire [159:0] row122;
+assign row122 = ram_internal[122];
+
+wire [159:0] row123;
+assign row123 = ram_internal[123];
+
+wire [159:0] row124;
+assign row124 = ram_internal[124];
+
+wire [159:0] row125;
+assign row125 = ram_internal[125];
+
+wire [159:0] row126;
+assign row126 = ram_internal[126];
+
+wire [159:0] row127;
+assign row127 = ram_internal[127];
 
 wire [7:0] a0;
 assign a0 = {ram_internal[3][0],ram_internal[4][0],ram_internal[5][0],ram_internal[6][0],ram_internal[7][0],ram_internal[8][0],ram_internal[9][0],ram_internal[10][0]};

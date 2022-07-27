@@ -348,7 +348,7 @@ always @(posedge clk) begin
                 write_en <= 1'b1;
                 write_sel <= 2'b01; //write_sel1 mux selects sum
                 port <= 1'b0; //port 1 enabled for write
-                c_rst <= 1'b0; //reset c latch
+                c_rst <= 1'b1; //reset c latch
                 c_en <= 1'b0;  //do not store carry in c latch
                 m_rst <= 1'b0; //do not reset m latch
                 m_en <= 1'b0;  //no masking required
@@ -419,7 +419,7 @@ always @(posedge clk) begin
                 write_en <= 1'b0; //do not write
                 write_sel <= 2'b01; //don't care
                 port <= 1'b0; //don't care
-                c_rst <= 1'b0; //no reset carry
+                c_rst <= 1'b1; //reset carry
                 c_en <= 1'b0;  //do not store carry in c latch
                 m_rst <= 1'b0; //do not reset m latch
                 m_en <= 1'b1;  //save value read to masks
@@ -469,7 +469,7 @@ always @(posedge clk) begin
                 write_en <= 1'b1; //write
                 write_sel <= 2'b01; //select carry
                 port <= 1'b1; //port 2
-                c_rst <= 1'b0; //no reset carry
+                c_rst <= 1'b1; //reset carry
                 c_en <= 1'b1;  //store carry values
                 m_rst <= 1'b0; //do not reset m latch
                 m_en <= 1'b0;  //do not update masks

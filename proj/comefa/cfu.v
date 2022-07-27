@@ -390,7 +390,8 @@ dpram #(.AWIDTH(`AWIDTH), .NUM_WORDS(`NUM_LOCATIONS), .DWIDTH(`STORED_INST_DATA_
 //I'm just loading them from a file.
 initial begin
   //$readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.eltwiseadd.dat", u_instr_ram.ram);
-  $readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.rfadd.dat", u_instr_ram.ram);
+  //$readmemb("/home/data1/aman/CFU-Playground/proj/comefa/instructions.rfadd.dat", u_instr_ram.ram);
+  $readmemb("/home/data1/aman/comefa/comefa/software/instructions.dotprod.dat", u_instr_ram.ram);
 end
 
 /////////////////////////////////////////
