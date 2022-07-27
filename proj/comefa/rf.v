@@ -15,7 +15,7 @@ input clk;
 input resetn;
 input [`RF_ADDR_WIDTH-1:0] addr;
 input  wren;
-input [`RF_DATA_WIDTH:0] data;
+input [`RF_DATA_WIDTH-1:0] data;
 output reg [`RF_DATA_WIDTH-1:0] rf0;
 output reg [`RF_DATA_WIDTH-1:0] rf1;
 output reg [`RF_DATA_WIDTH-1:0] rf2;

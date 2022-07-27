@@ -267,11 +267,6 @@ wire [`DWIDTH-1:0] swz_cram_data;
 wire load_cram;
 wire [`LOG_NUM_CRAMS-1:0] ram_num_for_write;
 
-reg [`RF_MAX_PRECISION-1:0] rf0;
-reg [`RF_MAX_PRECISION-1:0] rf1;
-reg [`RF_MAX_PRECISION-1:0] rf2;
-reg [`RF_MAX_PRECISION-1:0] rf3;
-
 wire start;
 wire done;
 wire execute;
@@ -282,8 +277,8 @@ wire cram3_we;
 
 wire stored_instr_we_cpu;
 wire [8:0] stored_instr_addr_cpu;
-wire [31:0] stored_instr_datain_cpu;
-wire [31:0] stored_instr_dataout_cpu;
+wire [`STORED_INST_DATA_WIDTH-1:0] stored_instr_datain_cpu;
+wire [`STORED_INST_DATA_WIDTH-1:0] stored_instr_dataout_cpu;
 
 wire stored_instr_we_internal;
 wire [`AWIDTH-1:0] stored_instr_addr_internal;
@@ -714,7 +709,7 @@ swizzle_cram_to_dram u_swz_c2d (
   .ram_data_last(ram_data_last),
   .mem_ctrl_data_out(dram_data_out), //goes to CPU for now
   .mem_ctrl_addr(dram_addr_out), //unconnected for now
-  .mem_ctrl_addr_start(0), //TODO: hardcoding for now; need to be configured by CPU
+  .mem_ctrl_addr_start(9'd0), //TODO: hardcoding for now; need to be configured by CPU
   .mem_ctrl_we(dram_we_out), //unconnected for now
   .ready(swizzle_c2d_ready)
 );
