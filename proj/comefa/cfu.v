@@ -723,7 +723,7 @@ always @(posedge clk) begin
 end
 
 // Parameters
-parameter AXI_DATA_WIDTH = 40;
+parameter AXI_DATA_WIDTH = 64;
 parameter AXI_ADDR_WIDTH = 16;
 parameter AXI_STRB_WIDTH = (AXI_DATA_WIDTH/8);
 parameter AXI_ID_WIDTH = 8;
@@ -1037,5 +1037,12 @@ always @(posedge clk) begin
   end
   
 end
+
+`ifdef VCS
+initial begin
+  $vcdpluson;
+  $vcdplusmemon;
+end
+`endif
 
 endmodule
