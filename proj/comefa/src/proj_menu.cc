@@ -26,7 +26,6 @@ namespace {
 // Template Fn
 void do_hello_world(void) { puts("Hello, World!!!\n"); }
 
-// Test template instruction
 void do_exercise_cfu_op0(void) {
   puts("\nExercise CFU Op0 aka ADD\n");
   int cfu;
@@ -44,6 +43,28 @@ void do_exercise_cfu_op0(void) {
     }
   }
   printf("Performed %d comparisons", count);
+}
+
+void do_exercise_cfu_op2_load(void) {
+  puts("\nExercise CFU Op2 aka load (dram->comefa) using DMA\n");
+  int cfu;
+  cfu = cfu_op2(0, 0, 0); //funct7==0 means read
+  printf("Triggered DMA read\n");
+  do {
+    cfu = cfu_op2(1, 0, 0); //set funct7 to 1 to indicate we are checking for readyness
+  } while (cfu==0); //cfu will be 1 when ready
+  printf("DMA read finished\n");
+}
+
+void do_exercise_cfu_op2_store(void) {
+  puts("\nExercise CFU Op2 aka store (comefa->dram) using DMA\n");
+  int cfu;
+  cfu = cfu_op2(2, 0, 0); //funct7==2 means write
+  printf("Triggered DMA write\n");
+  do {
+    cfu = cfu_op2(3, 0, 0); //set funct7 to 3 to indicate we are checking for readyness
+  } while (cfu==0); //cfu will be 1 when ready
+  printf("DMA write finished\n");
 }
 
 /*
@@ -97,8 +118,6 @@ void do_exercise_cfu_op2(void) {
 }
 */
 
-// Test template instruction
-
 unsigned char A[160*4];
 unsigned char X[160*4];
 unsigned char B[160*4];
@@ -106,8 +125,6 @@ unsigned char Y[160*4];
 unsigned int C_expect[160*4];
 unsigned int C[160*4];
 
-
-// Test template instruction
 void do_exercise_cfu_op5(void) {
   puts("\nExercise CFU Op5 aka Write to Comefa RAM\n");
   int count = 0;
@@ -205,16 +222,11 @@ void do_exercise_cfu_op5(void) {
         printf("Writing data %08x at ram address %08x (higher =%08x)\n", lower, ram_addr, higher);
         printf("i: %08d A: %08x B:%08x expected=%08x cfu= %08x\n", i, A[i], B[i], expected, cfu);
       }
-      //if (cfu != expected) {
-      //  printf("\n***FAIL\n");
-      //  return;
-      //}
       count++;
   }
   printf("Sent %d values", count);
 }
 
-// Test template instruction
 void do_exercise_cfu_op6(void) {
   puts("\nExercise CFU Op6 aka Read from Comefa RAM\n");
   int count = 0;
@@ -228,12 +240,6 @@ void do_exercise_cfu_op6(void) {
   int cfu = 0;
 
   for (int i = 0; i < 160*4; i += 1) {
-      //int expected = a;
-      //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
-      //if (cfu != expected) {
-      //  printf("\n***FAIL\n");
-      //  return;
-      //}
 
       if ((i>0) && (i%160==0)) {
         ram_addr = ram_addr + (1<<9); //the <<9 is to change the higher order bits
@@ -274,82 +280,49 @@ void do_exercise_cfu_op6(void) {
   printf("Performed %d comparisons", count);
 }
 
-//TODO: Change this so that one value starts and the return value is used to see if the work is done
 void do_exercise_cfu_op7_start(void) {
   puts("\nExercise CFU Op7_start aka Start Execution\n");
-  //int count = 0;
   int cfu;
-  //for (int a = 0x0; a < 0x64; a += 0x1) {
-      //int expected = a;
-      int inst_start_addr = 3-1;
-      int inst_end_addr = 5-1;
-      cfu = cfu_op7(2, inst_start_addr, inst_end_addr);  //configure start and end addresses
+  int inst_start_addr = 3-1;
+  int inst_end_addr = 5-1;
+  cfu = cfu_op7(2, inst_start_addr, inst_end_addr);  //configure start and end addresses
 
-      cfu = cfu_op7(0, 0, 0); //actually start the computation
-      printf("Got result %08x after starting execution\n", cfu);
-      //printf("Read data %08x from address %08x\n", cfu, a);
-      //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
-      //if (cfu != expected) {
-      //  printf("\n***FAIL\n");
-      //  return;
-      //}
-      //count++;
-  //}
-  //printf("Performed %d comparisons", count);
+  cfu = cfu_op7(0, 0, 0); //actually start the computation
+  printf("Got result %08x after starting execution\n", cfu);
 }
 
-//TODO: Change this so that one value starts and the return value is used to see if the work is done
 void do_exercise_cfu_op7_check(void) {
   puts("\nExercise CFU Op7_check aka Check Execution\n");
-  //int count = 0;
   int cfu=0;
-  //for (int a = 0x0; a < 0x64; a += 0x1) {
-      //int expected = a;
-      while (cfu!=1) {
-        cfu = cfu_op7(1, 0, 0); //Data written doesn't matter
-        printf("Got result %08x after starting execution\n", cfu);
-      }
-      printf("Execution finished\n");
-      //printf("Read data %08x from address %08x\n", cfu, a);
-      //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
-      //if (cfu != expected) {
-      //  printf("\n***FAIL\n");
-      //  return;
-      //}
-      //count++;
-  //}
-  //printf("Performed %d comparisons", count);
+  while (cfu!=1) {
+    cfu = cfu_op7(1, 0, 0); //Data written doesn't matter
+    printf("Got result %08x after starting execution\n", cfu);
+  }
+  printf("Execution finished\n");
 }
 
 void do_exercise_cfu_op7_write_rf(void) {
   puts("\nExercise CFU Op7_write_rf aka Write RF\n");
-  //int count = 0;
-  //for (int a = 0x0; a < 0x64; a += 0x1) {
-      int expected = 0xffffffff;
-      int cfu;
-      //              data addr
-      cfu = cfu_op7(2, 12, 0); 
-      if (cfu != expected) {
-        printf("\n***FAIL\n");
-      }
-      cfu = cfu_op7(2, 13, 1); 
-      if (cfu != expected) {
-        printf("\n***FAIL\n");
-      }
-      cfu = cfu_op7(2, 14, 2); 
-      if (cfu != expected) {
-        printf("\n***FAIL\n");
-      }
-      cfu = cfu_op7(2, 15, 3); 
-      if (cfu != expected) {
-        printf("\n***FAIL\n");
-      }
-      printf("Got result %08x after starting execution\n", cfu);
-      //printf("Read data %08x from address %08x\n", cfu, a);
-      //printf("a: %08x b:%08x expected=%08x cfu= %08x\n", a, 0, expected, cfu);
-      //count++;
-  //}
-  //printf("Performed %d comparisons", count);
+  int expected = 0xffffffff;
+  int cfu;
+  //              data addr
+  cfu = cfu_op7(2, 12, 0); 
+  if (cfu != expected) {
+    printf("\n***FAIL\n");
+  }
+  cfu = cfu_op7(2, 13, 1); 
+  if (cfu != expected) {
+    printf("\n***FAIL\n");
+  }
+  cfu = cfu_op7(2, 14, 2); 
+  if (cfu != expected) {
+    printf("\n***FAIL\n");
+  }
+  cfu = cfu_op7(2, 15, 3); 
+  if (cfu != expected) {
+    printf("\n***FAIL\n");
+  }
+  printf("Got result %08x after starting execution\n", cfu);
 }
 
 struct Menu MENU = {
@@ -357,6 +330,8 @@ struct Menu MENU = {
     "project",
     {
         MENU_ITEM('0', "exercise cfu op0 - reset and test", do_exercise_cfu_op0),
+        MENU_ITEM('2', "exercise cfu op2 - load (dram->comefa) using dma", do_exercise_cfu_op2_load),
+        MENU_ITEM('3', "exercise cfu op3 - store (comefa->dram) using dma", do_exercise_cfu_op2_store),
         MENU_ITEM('5', "exercise cfu op5 - write comefa", do_exercise_cfu_op5),
         MENU_ITEM('6', "exercise cfu op6 - read comefa", do_exercise_cfu_op6),
         MENU_ITEM('7', "exercise cfu op7 - start execution", do_exercise_cfu_op7_start),

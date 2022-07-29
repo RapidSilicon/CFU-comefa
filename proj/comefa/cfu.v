@@ -30,6 +30,7 @@
 `define WRITE_TO_CRAM 7'd5
 `define READ_FROM_CRAM 7'd6
 `define EXECUTE_INSTRUCTIONS 7'd7
+`define START_DMA 7'd2
 
 module Cfu (
   input               cmd_valid,
@@ -56,6 +57,115 @@ wire check;
 reg done_reg;
 reg start_reg;
 
+//////////////////////////////////////////////
+// AXI related parameters
+//////////////////////////////////////////////
+parameter AXI_DATA_WIDTH = 64;
+parameter AXI_ADDR_WIDTH = 16;
+parameter AXI_STRB_WIDTH = (AXI_DATA_WIDTH/8);
+parameter AXI_ID_WIDTH = 8;
+parameter AXI_MAX_BURST_LEN = 16;
+parameter AXIS_DATA_WIDTH = AXI_DATA_WIDTH;
+parameter AXIS_KEEP_ENABLE = (AXIS_DATA_WIDTH>8);
+parameter AXIS_KEEP_WIDTH = (AXIS_DATA_WIDTH/8);
+parameter AXIS_LAST_ENABLE = 1;
+parameter AXIS_ID_ENABLE = 1;
+parameter AXIS_ID_WIDTH = 8;
+parameter AXIS_DEST_ENABLE = 0;
+parameter AXIS_DEST_WIDTH = 8;
+parameter AXIS_USER_ENABLE = 1;
+parameter AXIS_USER_WIDTH = 1;
+parameter LEN_WIDTH = 20;
+parameter TAG_WIDTH = 8;
+parameter ENABLE_SG = 0;
+parameter ENABLE_UNALIGNED = 0;
+
+reg [AXI_ADDR_WIDTH-1:0] s_axis_read_desc_addr;
+reg [LEN_WIDTH-1:0] s_axis_read_desc_len;
+reg [TAG_WIDTH-1:0] s_axis_read_desc_tag;
+reg [AXIS_ID_WIDTH-1:0] s_axis_read_desc_id;
+reg [AXIS_DEST_WIDTH-1:0] s_axis_read_desc_dest;
+reg [AXIS_USER_WIDTH-1:0] s_axis_read_desc_user;
+reg s_axis_read_desc_valid;
+wire m_axis_read_data_tready;
+assign m_axis_read_data_tready = 1'b1; //we're always ready to receive data
+reg [AXI_ADDR_WIDTH-1:0] s_axis_write_desc_addr;
+reg [LEN_WIDTH-1:0] s_axis_write_desc_len;
+reg [TAG_WIDTH-1:0] s_axis_write_desc_tag;
+reg s_axis_write_desc_valid;
+reg [AXIS_DATA_WIDTH-1:0] s_axis_write_data_tdata;
+reg [AXIS_KEEP_WIDTH-1:0] s_axis_write_data_tkeep;
+reg s_axis_write_data_tvalid;
+reg s_axis_write_data_tlast;
+reg [AXIS_ID_WIDTH-1:0] s_axis_write_data_tid;
+wire [AXIS_DEST_WIDTH-1:0] s_axis_write_data_tdest;
+wire [AXIS_USER_WIDTH-1:0] s_axis_write_data_tuser;
+
+wire dramc_axi_awready;
+wire dramc_axi_wready;
+wire [AXI_ID_WIDTH-1:0] dramc_axi_bid;
+wire [1:0] dramc_axi_bresp;
+wire dramc_axi_bvalid;
+wire dramc_axi_arready;
+wire [AXI_ID_WIDTH-1:0] dramc_axi_rid;
+wire [AXI_DATA_WIDTH-1:0] dramc_axi_rdata;
+wire [1:0] dramc_axi_rresp;
+wire dramc_axi_rlast;
+wire dramc_axi_rvalid;
+
+wire read_enable;
+wire write_enable;
+wire write_abort;
+
+wire s_axis_read_desc_ready;
+wire [TAG_WIDTH-1:0] m_axis_read_desc_status_tag;
+wire [3:0] m_axis_read_desc_status_error;
+wire m_axis_read_desc_status_valid;
+wire [AXIS_DATA_WIDTH-1:0] m_axis_read_data_tdata;
+wire [AXIS_KEEP_WIDTH-1:0] m_axis_read_data_tkeep;
+wire m_axis_read_data_tvalid;
+wire m_axis_read_data_tlast;
+wire [AXIS_ID_WIDTH-1:0] m_axis_read_data_tid;
+wire [AXIS_DEST_WIDTH-1:0] m_axis_read_data_tdest;
+wire [AXIS_USER_WIDTH-1:0] m_axis_read_data_tuser;
+wire s_axis_write_desc_ready;
+wire [LEN_WIDTH-1:0] m_axis_write_desc_status_len;
+wire [TAG_WIDTH-1:0] m_axis_write_desc_status_tag;
+wire [AXIS_ID_WIDTH-1:0] m_axis_write_desc_status_id;
+wire [AXIS_DEST_WIDTH-1:0] m_axis_write_desc_status_dest;
+wire [AXIS_USER_WIDTH-1:0] m_axis_write_desc_status_user;
+wire [3:0] m_axis_write_desc_status_error;
+wire m_axis_write_desc_status_valid;
+wire s_axis_write_data_tready;
+
+wire [AXI_ID_WIDTH-1:0] dramc_axi_awid;
+wire [AXI_ADDR_WIDTH-1:0] dramc_axi_awaddr;
+wire [7:0] dramc_axi_awlen;
+wire [2:0] dramc_axi_awsize;
+wire [1:0] dramc_axi_awburst;
+wire dramc_axi_awlock;
+wire [3:0] dramc_axi_awcache;
+wire [2:0] dramc_axi_awprot;
+wire dramc_axi_awvalid;
+wire [AXI_DATA_WIDTH-1:0] dramc_axi_wdata;
+wire [AXI_STRB_WIDTH-1:0] dramc_axi_wstrb;
+wire dramc_axi_wlast;
+wire dramc_axi_wvalid;
+wire dramc_axi_bready;
+wire [AXI_ID_WIDTH-1:0] dramc_axi_arid;
+wire [AXI_ADDR_WIDTH-1:0] dramc_axi_araddr;
+wire [7:0] dramc_axi_arlen;
+wire [2:0] dramc_axi_arsize;
+wire [1:0] dramc_axi_arburst;
+wire dramc_axi_arlock;
+wire [3:0] dramc_axi_arcache;
+wire [2:0] dramc_axi_arprot;
+wire dramc_axi_arvalid;
+wire dramc_axi_rready;
+
+reg dma_read_status;
+reg dma_write_status;
+
 //The function_id part of the payload is 10 bits, and is logically
 //split into two parts: funct3 and funct7. 
 assign funct7 = cmd_payload_function_id[9:3];
@@ -77,7 +187,7 @@ reg [31:0]   cmd_payload_inputs_1_reg;
 reg [9:0]    cmd_payload_function_id_reg;
 
 /////////////////////////////////////////
-// Op0: byte sum (unsigned)
+// Op0: byte sum (unsigned) -> this is dummy now
 /////////////////////////////////////////
 wire [31:0] cfu_test;
 assign cfu_test[31:0] =  cmd_payload_inputs_0_reg[7:0]   + cmd_payload_inputs_1_reg[7:0];
@@ -108,7 +218,7 @@ endgenerate
 */
 
 /////////////////////////////////////////
-// Select output 
+// Select output for the CPU interface 
 /////////////////////////////////////////
 wire   [31:0]   rsp_payload_outputs_0_wire;
 wire [31:0] val;
@@ -129,7 +239,12 @@ assign rsp_payload_outputs_0_wire =
                                     ) :
                                     (funct3_reg==3'd4) ? val : 
                                     (funct3_reg==3'd3) ? {32{1'b1}} :
-                                    (funct3_reg==3'd2) ? {32{1'b1}} :
+                                    (funct3_reg==3'd2) ? (
+                                      (funct7_reg==3'd0) ? {32{1'b0}} : //trigger dma read
+                                      (funct7_reg==3'd1) ? dma_read_status: //check dma read status
+                                      (funct7_reg==3'd2) ? {32{1'b0}} :
+                                      (funct7_reg==3'd3) ? dma_write_status: 32'b0 //check dma write status
+                                    ) :
                                     (funct3_reg==3'd1) ? {32{1'b1}} : 
                                     (funct3_reg==3'd0) ? cfu_test : 32'b0;
 
@@ -178,7 +293,7 @@ always @(posedge clk) begin
           //then we send response in the next cycle.
           if ((funct3==3'd0) ||  //cfu_op0 -> add
               (funct3==3'd1) ||  //cfu_op1 -> swap
-              (funct3==3'd2) ||  //cfu_op2 ->
+              (funct3==3'd2) ||  //cfu_op2 -> trigger dma read
               (funct3==3'd3) ||  //cfu_op3 -> write instruction memory 
               (funct3==3'd5) ||  //cfu_op5 -> write comefa
               (funct3==3'd7)     //cfu_op7 -> start execution, check execution, set registers
@@ -285,9 +400,11 @@ wire [`AWIDTH-1:0] stored_instr_addr_internal;
 wire [`DWIDTH-1:0] stored_instr_datain_internal;
 wire [`DWIDTH-1:0] stored_instr_dataout_internal;
 
+///////////////////////////////////////////////////
 //Choose what we do with the Comefa RAMs:
 // (1) Execute instructions 
 // (2) Read or write data
+///////////////////////////////////////////////////
 assign swz_cram_addr = swz_cram_addr_full[`AWIDTH-1:0];
 assign ram_num_for_write = swz_cram_addr_full[`LOG_NUM_CRAMS+`AWIDTH-1:`AWIDTH];
 assign cram_addr_in  = execute ? exec_instr_addr : swz_cram_addr;
@@ -359,12 +476,6 @@ comefa u_comefa_ram3(
 /////////////////////////////////////////
 //Normal BRAM - Will store instructions
 /////////////////////////////////////////
-/////////////////////////////////////////
-// Op3: Writing to RAM
-/////////////////////////////////////////
-/////////////////////////////////////////
-// Op4: Reading from RAM
-/////////////////////////////////////////
 assign stored_instr_we_cpu = (funct3_reg==`WRITE_TO_INST_RAM) & (~(funct3_reg==`READ_FROM_INST_RAM)) & cmd_valid & cmd_ready;
 assign stored_instr_addr_cpu = cmd_payload_inputs_0_reg;
 assign stored_instr_datain_cpu = cmd_payload_inputs_1_reg;
@@ -421,11 +532,11 @@ rf u_rf (
   .rf3(rf3)
 );
 
-/////////////////////////////////////////
+/////////////////////////////////////////////////////////
 //Controller - Will read stored instructions
 //from normal BRAM and send executable (micro)instructions
 //to Comefa RAM
-/////////////////////////////////////////
+////////////////////////////////////////////////////////
 reg [`AWIDTH-1:0] stored_inst_start_addr;
 reg [`AWIDTH-1:0] stored_inst_end_addr;
 
@@ -551,61 +662,11 @@ reg [`AWIDTH-1:0] starting_addr_while_reading;
 reg [31:0] data_read_count;
 reg ram_data_last;
 reg first_time;
-/*
-always @(posedge clk) begin
-  if (~long_reset_n) begin
-    cram_data_valid <= 0;
-    data_read_count <= 0;
-    cram_addr_for_read_full <= 0;
-    ram_data_last <= 0;
-    first_time <= 0;
-  end
-  else if (swizzle_c2d_ready) begin
-    cram_data_valid <= 0;
-  end
-  else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
-    if (first_time==0) begin
-    cram_data_valid <= 1;
-    first_time <= 1; 
-    data_read_count <= 0;
-    starting_addr_while_reading <= cmd_payload_inputs_0;
-    cram_addr_for_read_full <= cmd_payload_inputs_0;
-    num_elements_to_read <= cmd_payload_inputs_1;
-    ram_data_last <= 0;
-    end
-    else begin
-    cram_data_valid <= 1;
-    cram_addr_for_read_full <= cram_addr_for_read + 4;
-    data_read_count <= data_read_count + 1;
-    first_time <= 0;
-    end
-  end
-  //else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==0)) begin
-  //  cram_data_valid <= 1;
-  //  first_time <= 0;
-  //  cram_addr_for_read_full <= cram_addr_for_read + 4;
-  //  ram_data_last <= 0;
-  //end
-  else if (cmd_valid & cmd_ready & (funct3==`READ_FROM_CRAM) & (funct7==1)) begin
-    cram_data_valid <= 1;
-    ram_data_last <= 1;
-    first_time <= 0;
-    cram_addr_for_read_full <= cmd_payload_inputs_0; //starting address
-    num_elements_to_read <= cmd_payload_inputs_1;
-  end
-  else if (cram_data_valid && first_time) begin
-    data_read_count <= data_read_count + 1;
-    cram_addr_for_read_full <= cram_addr_for_read + 4;
-    ram_data_last <= 0;
-  end
-  else begin
-    cram_data_valid <= 0;
-  end
-end
-*/
-
 reg [2:0] cram_read_state;
 
+//State machine that assists the swizzle logic
+//in reading data from CRAMs and sending it to
+//swizzle logic
 always @(posedge clk) begin
   if (~long_reset_n) begin
     cram_data_valid <= 0;
@@ -678,7 +739,6 @@ always @(posedge clk) begin
   end
 end
 
-
 wire [`DWIDTH-1:0] transposed_data_from_cram;
 assign transposed_data_from_cram = (ram_num_for_read==0) ? cram0_q2 :
                                    (ram_num_for_read==1) ? cram1_q2 :
@@ -722,109 +782,11 @@ always @(posedge clk) begin
   dram_data_out_c2d_delayed <= dram_data_out_c2d;
 end
 
-// Parameters
-parameter AXI_DATA_WIDTH = 64;
-parameter AXI_ADDR_WIDTH = 16;
-parameter AXI_STRB_WIDTH = (AXI_DATA_WIDTH/8);
-parameter AXI_ID_WIDTH = 8;
-parameter AXI_MAX_BURST_LEN = 16;
-parameter AXIS_DATA_WIDTH = AXI_DATA_WIDTH;
-parameter AXIS_KEEP_ENABLE = (AXIS_DATA_WIDTH>8);
-parameter AXIS_KEEP_WIDTH = (AXIS_DATA_WIDTH/8);
-parameter AXIS_LAST_ENABLE = 1;
-parameter AXIS_ID_ENABLE = 1;
-parameter AXIS_ID_WIDTH = 8;
-parameter AXIS_DEST_ENABLE = 0;
-parameter AXIS_DEST_WIDTH = 8;
-parameter AXIS_USER_ENABLE = 1;
-parameter AXIS_USER_WIDTH = 1;
-parameter LEN_WIDTH = 20;
-parameter TAG_WIDTH = 8;
-parameter ENABLE_SG = 0;
-parameter ENABLE_UNALIGNED = 0;
-
-reg [AXI_ADDR_WIDTH-1:0] s_axis_read_desc_addr;
-reg [LEN_WIDTH-1:0] s_axis_read_desc_len;
-reg [TAG_WIDTH-1:0] s_axis_read_desc_tag;
-reg [AXIS_ID_WIDTH-1:0] s_axis_read_desc_id;
-reg [AXIS_DEST_WIDTH-1:0] s_axis_read_desc_dest;
-reg [AXIS_USER_WIDTH-1:0] s_axis_read_desc_user;
-reg s_axis_read_desc_valid;
-wire m_axis_read_data_tready;
-wire [AXI_ADDR_WIDTH-1:0] s_axis_write_desc_addr;
-wire [LEN_WIDTH-1:0] s_axis_write_desc_len;
-wire [TAG_WIDTH-1:0] s_axis_write_desc_tag;
-wire s_axis_write_desc_valid;
-wire [AXIS_DATA_WIDTH-1:0] s_axis_write_data_tdata;
-wire [AXIS_KEEP_WIDTH-1:0] s_axis_write_data_tkeep;
-wire s_axis_write_data_tvalid;
-wire s_axis_write_data_tlast;
-wire [AXIS_ID_WIDTH-1:0] s_axis_write_data_tid;
-wire [AXIS_DEST_WIDTH-1:0] s_axis_write_data_tdest;
-wire [AXIS_USER_WIDTH-1:0] s_axis_write_data_tuser;
-
-wire dramc_axi_awready;
-wire dramc_axi_wready;
-wire [AXI_ID_WIDTH-1:0] dramc_axi_bid;
-wire [1:0] dramc_axi_bresp;
-wire dramc_axi_bvalid;
-wire dramc_axi_arready;
-wire [AXI_ID_WIDTH-1:0] dramc_axi_rid;
-wire [AXI_DATA_WIDTH-1:0] dramc_axi_rdata;
-wire [1:0] dramc_axi_rresp;
-wire dramc_axi_rlast;
-wire dramc_axi_rvalid;
-
-wire read_enable;
-wire write_enable;
-wire write_abort;
-
-wire s_axis_read_desc_ready;
-wire [TAG_WIDTH-1:0] m_axis_read_desc_status_tag;
-wire [3:0] m_axis_read_desc_status_error;
-wire m_axis_read_desc_status_valid;
-wire [AXIS_DATA_WIDTH-1:0] m_axis_read_data_tdata;
-wire [AXIS_KEEP_WIDTH-1:0] m_axis_read_data_tkeep;
-wire m_axis_read_data_tvalid;
-wire m_axis_read_data_tlast;
-wire [AXIS_ID_WIDTH-1:0] m_axis_read_data_tid;
-wire [AXIS_DEST_WIDTH-1:0] m_axis_read_data_tdest;
-wire [AXIS_USER_WIDTH-1:0] m_axis_read_data_tuser;
-wire s_axis_write_desc_ready;
-wire [LEN_WIDTH-1:0] m_axis_write_desc_status_len;
-wire [TAG_WIDTH-1:0] m_axis_write_desc_status_tag;
-wire [AXIS_ID_WIDTH-1:0] m_axis_write_desc_status_id;
-wire [AXIS_DEST_WIDTH-1:0] m_axis_write_desc_status_dest;
-wire [AXIS_USER_WIDTH-1:0] m_axis_write_desc_status_user;
-wire [3:0] m_axis_write_desc_status_error;
-wire m_axis_write_desc_status_valid;
-wire s_axis_write_data_tready;
-
-wire [AXI_ID_WIDTH-1:0] dramc_axi_awid;
-wire [AXI_ADDR_WIDTH-1:0] dramc_axi_awaddr;
-wire [7:0] dramc_axi_awlen;
-wire [2:0] dramc_axi_awsize;
-wire [1:0] dramc_axi_awburst;
-wire dramc_axi_awlock;
-wire [3:0] dramc_axi_awcache;
-wire [2:0] dramc_axi_awprot;
-wire dramc_axi_awvalid;
-wire [AXI_DATA_WIDTH-1:0] dramc_axi_wdata;
-wire [AXI_STRB_WIDTH-1:0] dramc_axi_wstrb;
-wire dramc_axi_wlast;
-wire dramc_axi_wvalid;
-wire dramc_axi_bready;
-wire [AXI_ID_WIDTH-1:0] dramc_axi_arid;
-wire [AXI_ADDR_WIDTH-1:0] dramc_axi_araddr;
-wire [7:0] dramc_axi_arlen;
-wire [2:0] dramc_axi_arsize;
-wire [1:0] dramc_axi_arburst;
-wire dramc_axi_arlock;
-wire [3:0] dramc_axi_arcache;
-wire [2:0] dramc_axi_arprot;
-wire dramc_axi_arvalid;
-wire dramc_axi_rready;
-
+////////////////////////////////////////////////////////
+// DMA engine - Perfoms two functions: 
+// (1) Reads input data from DRAM and loads it in CRAMs
+// (2) Reads outputs from CRAMs and stores it in DRAM
+////////////////////////////////////////////////////////
 axi_dma #(
     .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
     .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
@@ -960,6 +922,11 @@ dma_engine (
     .write_abort(1'b0)
 );
 
+//////////////////////////////////////////////////
+//This is a RAM with an AXI interface. It models
+//a DDR controller with an AXI interface towards
+//user logic
+//////////////////////////////////////////////////
 axi_ram #(
     .DATA_WIDTH(AXI_DATA_WIDTH),
     .ADDR_WIDTH(AXI_ADDR_WIDTH),
@@ -1007,6 +974,14 @@ ddr_memory_controller (
     .s_axi_rready(dramc_axi_rready)
 );
 
+/////////////////////////////////////////////////
+// Logic to configure and control the DMA engine
+// for reading from DRAM
+/////////////////////////////////////////////////
+reg start_dma_read_reg;
+reg check_dma_read_reg;
+reg [2:0] dma_read_ctrl_state;
+
 always @(posedge clk) begin
   if (~long_reset_n) begin
     s_axis_read_desc_addr <= 0;
@@ -1017,25 +992,184 @@ always @(posedge clk) begin
     s_axis_read_desc_user <= 0;
     s_axis_read_desc_valid <= 0;
   end
-  else if (m_axis_read_desc_status_valid) begin
-    s_axis_read_desc_addr <= 0;
-    s_axis_read_desc_len <= 0;
-    s_axis_read_desc_tag <= 0;
-    s_axis_read_desc_id <= 0;
-    s_axis_read_desc_dest <= 0;
-    s_axis_read_desc_user <= 0;
-    s_axis_read_desc_valid <= 0;
-  end 
-  else if (start_reg && s_axis_read_desc_ready) begin
-    s_axis_read_desc_addr <= 20;
-    s_axis_read_desc_len <= 4;
-    s_axis_read_desc_tag <= 2;
-    s_axis_read_desc_id <= 2;
-    s_axis_read_desc_dest <= 0;
-    s_axis_read_desc_user <= 0;
-    s_axis_read_desc_valid <= 1;
+  else begin
+    case(dma_read_ctrl_state)
+    0: begin
+      if (start_dma_read_reg && s_axis_read_desc_ready) begin
+        s_axis_read_desc_addr <= 20;
+        s_axis_read_desc_len <= 60; //number of bytes
+        s_axis_read_desc_tag <= 2;
+        s_axis_read_desc_id <= 2;
+        s_axis_read_desc_dest <= 0;
+        s_axis_read_desc_user <= 0;
+        s_axis_read_desc_valid <= 1;
+        dma_read_ctrl_state <= 1;
+      end
+      dma_read_status <= 0;
+    end
+
+    1: begin
+        s_axis_read_desc_addr <= 0;
+        s_axis_read_desc_len <= 0;
+        s_axis_read_desc_tag <= 0;
+        s_axis_read_desc_id <= 0;
+        s_axis_read_desc_dest <= 0;
+        s_axis_read_desc_user <= 0;
+        s_axis_read_desc_valid <= 0;
+        if (m_axis_read_desc_status_valid) begin
+          dma_read_status <= 1;
+          dma_read_ctrl_state <= 2;
+        end 
+    end
+
+    2: begin
+        if (check_dma_read_reg) begin
+          dma_read_status <= 1;
+          dma_read_ctrl_state <= 0;
+        end
+    end
+
+    endcase 
   end
-  
+end
+
+//When to start the DMA engine
+always @(posedge clk) begin
+  if (~resetn) begin
+    start_dma_read_reg <= 1'b0;
+  end
+  else if ((funct3_reg==`START_DMA) & (funct7_reg==0) & cmd_valid & cmd_ready) begin
+    start_dma_read_reg <= 1'b1;
+  end
+  else begin
+    start_dma_read_reg <= 1'b0;
+  end
+end
+
+//Checking if the DMA engine is done
+always @(posedge clk) begin
+  if (~resetn) begin
+    check_dma_read_reg <= 1'b0;
+  end
+  else if ((funct3_reg==`START_DMA) & (funct7_reg==1) & cmd_valid & cmd_ready) begin
+    check_dma_read_reg <= 1'b1;
+  end
+  else begin
+    check_dma_read_reg <= 1'b0;
+  end
+end
+
+/////////////////////////////////////////////////
+// Logic to configure and control the DMA engine
+// for writing to DRAM
+/////////////////////////////////////////////////
+reg start_dma_write_reg;
+reg check_dma_write_reg;
+reg [2:0] dma_write_ctrl_state;
+
+reg [7:0] write_data_count;
+wire [LEN_WIDTH-1:0] num_bytes = 64;
+wire [TAG_WIDTH-1:0] mytag = 3;
+reg put_new_data;
+wire [AXI_DATA_WIDTH-1:0] mydata;
+assign mydata = write_data_count + 100;
+
+always @(posedge clk) begin
+  if (~long_reset_n) begin
+    s_axis_write_desc_addr <= 0;
+    s_axis_write_desc_len <= 0;
+    s_axis_write_desc_tag <= 0;
+    s_axis_write_desc_valid <= 0;
+    write_data_count <= 0;
+    put_new_data <= 0;
+    dma_write_status <= 0;
+  end
+  else begin
+    case(dma_write_ctrl_state)
+    //Set descriptor when ready
+    0: begin
+      if (start_dma_write_reg && s_axis_write_desc_ready) begin
+        s_axis_write_desc_addr <= 20;
+        s_axis_write_desc_len <= num_bytes; //number of bytes
+        s_axis_write_desc_tag <= mytag;
+        s_axis_write_desc_valid <= 1;
+        dma_write_ctrl_state <= 1;
+        put_new_data <= 1;
+        write_data_count <= 1;
+      end
+      dma_write_status <= 0; 
+    end
+
+    1: begin
+        s_axis_write_desc_addr <= 0;
+        s_axis_write_desc_len <= 0;
+        s_axis_write_desc_tag <= 0;
+        s_axis_write_desc_valid <= 0;
+        //Start putting data on the bus
+
+        if (put_new_data) begin
+          write_data_count <= write_data_count + 1;
+          s_axis_write_data_tdata <= mydata;
+          s_axis_write_data_tkeep <= {AXIS_KEEP_WIDTH{1'b1}};
+          s_axis_write_data_tid <= mytag;
+          s_axis_write_data_tvalid <= 1'b1;
+          if (write_data_count == (num_bytes*8/AXI_DATA_WIDTH)) begin
+            s_axis_write_data_tlast <= 1'b1;
+            dma_write_ctrl_state <= 2;
+          end
+          else begin
+            s_axis_write_data_tlast <= 1'b0;
+            dma_write_ctrl_state <= 1;
+          end
+        end
+        if (s_axis_write_data_tready) begin
+          put_new_data <= 1; 
+        end
+        else begin
+          put_new_data <= 0;
+        end
+    end
+    2: begin
+        //wait for status valid to assert
+        if (m_axis_write_desc_status_valid) begin
+          dma_write_status <= 1;
+          dma_write_ctrl_state <= 3;
+        end 
+    end
+    3: begin
+        if (check_dma_write_reg) begin
+          dma_write_status <= 1; 
+          dma_write_ctrl_state <= 0;
+        end
+    end
+    endcase 
+  end
+end
+
+//When to start the DMA engine
+always @(posedge clk) begin
+  if (~resetn) begin
+    start_dma_write_reg <= 1'b0;
+  end
+  else if ((funct3_reg==`START_DMA) & (funct7_reg==2) & cmd_valid & cmd_ready) begin
+    start_dma_write_reg <= 1'b1;
+  end
+  else begin
+    start_dma_write_reg <= 1'b0;
+  end
+end
+
+//Checking if the DMA engine is done
+always @(posedge clk) begin
+  if (~resetn) begin
+    check_dma_write_reg <= 1'b0;
+  end
+  else if ((funct3_reg==`START_DMA) & (funct7_reg==3) & cmd_valid & cmd_ready) begin
+    check_dma_write_reg <= 1'b1;
+  end
+  else begin
+    check_dma_write_reg <= 1'b0;
+  end
 end
 
 `ifdef VCS
