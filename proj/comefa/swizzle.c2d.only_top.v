@@ -25,7 +25,8 @@ module swizzle_cram_to_dram(
   output  reg [`MEM_CTRL_AWIDTH-1:0] mem_ctrl_addr,
   input       [`MEM_CTRL_AWIDTH-1:0] mem_ctrl_addr_start,
   output  reg                        mem_ctrl_we,
-  output  reg ready
+  output  reg ready,
+  input       dma_mode
 );
 
 //when direction_of_dataflow is 0, that means
@@ -115,11 +116,18 @@ always @(posedge clk) begin
     case(read_state)
     0: begin
         if (data_valid & (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS))) begin
-          mem_ctrl_we <= 1'b0;
           mem_ctrl_addr <= mem_ctrl_addr_start;
-          out_data_counter <= 0;
           read_state <= 1;
-          flag <= 1;
+          if (dma_mode) begin
+            flag <= 0;
+            mem_ctrl_we <= 1'b1;
+            out_data_counter <= 1;
+          end
+          else begin
+            flag <= 1;
+            mem_ctrl_we <= 1'b0;
+            out_data_counter <= 0;
+          end
         end
         else begin
           mem_ctrl_we <= 1'b0;
@@ -135,7 +143,12 @@ always @(posedge clk) begin
         end
         else if (data_valid && ram_data_last) begin
           read_state <= 2;
-          mem_ctrl_we <= 1'b1;
+          if (dma_mode) begin
+            mem_ctrl_we <= 1'b0;
+          end
+          else begin
+            mem_ctrl_we <= 1'b1;
+          end
 	        mem_ctrl_addr <= mem_ctrl_addr + 1;
           out_data_counter <= 0;
         end
@@ -143,7 +156,8 @@ always @(posedge clk) begin
           read_state <= 1;
           mem_ctrl_we <= 1'b1;
           if (out_data_counter == (`COUNT_TO_SWITCH_BUFFERS-1)) begin
-            mem_ctrl_addr <= mem_ctrl_addr_start;
+            //mem_ctrl_addr <= mem_ctrl_addr_start;
+	          mem_ctrl_addr <= mem_ctrl_addr + 1;
           end
           else begin
 	          mem_ctrl_addr <= mem_ctrl_addr + 1;

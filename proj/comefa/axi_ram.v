@@ -163,14 +163,65 @@ assign s_axi_rvalid = PIPELINE_OUTPUT ? s_axi_rvalid_pipe_reg : s_axi_rvalid_reg
 integer i, j;
 
 initial begin
+
+  reg[7:0] A[160*4];
+  reg[7:0] X[160*4];
+  reg[7:0] B[160*4];
+  reg[7:0] Y[160*4];
+  reg [31:0] C_expect[160*4];
+  reg [31:0] C[160*4];
+  reg [63:0] val;
+
+  for (int i=0; i<160; i++) begin
+    //Keeping all 4 parts of the arrays the same for easy debug.
+    //This ensures that the contents of each RAM are the same.
+    A[i+0*160] = i;
+    X[i+0*160] = i;
+    B[i+0*160] = i+10;
+    Y[i+0*160] = i+10;
+
+    A[i+1*160] = i;
+    X[i+1*160] = i;
+    B[i+1*160] = i+10;
+    Y[i+1*160] = i+10;
+    
+    A[i+2*160] = i;
+    X[i+2*160] = i;
+    B[i+2*160] = i+10;
+    Y[i+2*160] = i+10;
+
+    A[i+3*160] = i;
+    X[i+3*160] = i;
+    B[i+3*160] = i+10;
+    Y[i+3*160] = i+10;
+
+    C_expect[i+0*160] = A[i+0*160]*X[i+0*160] + B[i+0*160]*Y[i+0*160];
+    C_expect[i+1*160] = A[i+1*160]*X[i+1*160] + B[i+1*160]*Y[i+1*160];
+    C_expect[i+2*160] = A[i+2*160]*X[i+2*160] + B[i+2*160]*Y[i+2*160];
+    C_expect[i+3*160] = A[i+3*160]*X[i+3*160] + B[i+3*160]*Y[i+3*160];
+    //C_expect[i+0*160] = int(B[i+0*160])*int(Y[i+0*160]);
+    //C_expect[i+1*160] = int(B[i+1*160])*int(Y[i+1*160]);
+    //C_expect[i+2*160] = int(B[i+2*160])*int(Y[i+2*160]);
+    //C_expect[i+3*160] = int(B[i+3*160])*int(Y[i+3*160]);
+  end
+
     // two nested loops for smaller number of iterations per loop
     // workaround for synthesizer complaints about large loop counts
     for (i = 0; i < 2**VALID_ADDR_WIDTH; i = i + 2**(VALID_ADDR_WIDTH/2)) begin
         for (j = i; j < i + 2**(VALID_ADDR_WIDTH/2); j = j + 1) begin
-            mem[j] = i+j;
+            mem[j] = 0;
         end
     end
+
+    //Load real values into the memory
+    //Each location is 64 bit wide
+    for (int i=0; i<160*4; i++) begin
+      val = {Y[i][7:0], B[i][7:0], X[i][7:0], A[i][7:0]};
+      mem[i] = val;
+    end
 end
+
+
 
 //Debug signals
 wire [DATA_WIDTH-1:0] mem_0; assign mem_0 = mem[0];
@@ -301,6 +352,199 @@ wire [DATA_WIDTH-1:0] mem_124; assign mem_124 = mem[124];
 wire [DATA_WIDTH-1:0] mem_125; assign mem_125 = mem[125];
 wire [DATA_WIDTH-1:0] mem_126; assign mem_126 = mem[126];
 wire [DATA_WIDTH-1:0] mem_127; assign mem_127 = mem[127];
+wire [DATA_WIDTH-1:0] mem_128; assign mem_128 = mem[128];
+wire [DATA_WIDTH-1:0] mem_129; assign mem_129 = mem[129];
+wire [DATA_WIDTH-1:0] mem_130; assign mem_130 = mem[130];
+wire [DATA_WIDTH-1:0] mem_131; assign mem_131 = mem[131];
+wire [DATA_WIDTH-1:0] mem_132; assign mem_132 = mem[132];
+wire [DATA_WIDTH-1:0] mem_133; assign mem_133 = mem[133];
+wire [DATA_WIDTH-1:0] mem_134; assign mem_134 = mem[134];
+wire [DATA_WIDTH-1:0] mem_135; assign mem_135 = mem[135];
+wire [DATA_WIDTH-1:0] mem_136; assign mem_136 = mem[136];
+wire [DATA_WIDTH-1:0] mem_137; assign mem_137 = mem[137];
+wire [DATA_WIDTH-1:0] mem_138; assign mem_138 = mem[138];
+wire [DATA_WIDTH-1:0] mem_139; assign mem_139 = mem[139];
+wire [DATA_WIDTH-1:0] mem_140; assign mem_140 = mem[140];
+wire [DATA_WIDTH-1:0] mem_141; assign mem_141 = mem[141];
+wire [DATA_WIDTH-1:0] mem_142; assign mem_142 = mem[142];
+wire [DATA_WIDTH-1:0] mem_143; assign mem_143 = mem[143];
+wire [DATA_WIDTH-1:0] mem_144; assign mem_144 = mem[144];
+wire [DATA_WIDTH-1:0] mem_145; assign mem_145 = mem[145];
+wire [DATA_WIDTH-1:0] mem_146; assign mem_146 = mem[146];
+wire [DATA_WIDTH-1:0] mem_147; assign mem_147 = mem[147];
+wire [DATA_WIDTH-1:0] mem_148; assign mem_148 = mem[148];
+wire [DATA_WIDTH-1:0] mem_149; assign mem_149 = mem[149];
+wire [DATA_WIDTH-1:0] mem_150; assign mem_150 = mem[150];
+wire [DATA_WIDTH-1:0] mem_151; assign mem_151 = mem[151];
+wire [DATA_WIDTH-1:0] mem_152; assign mem_152 = mem[152];
+wire [DATA_WIDTH-1:0] mem_153; assign mem_153 = mem[153];
+wire [DATA_WIDTH-1:0] mem_154; assign mem_154 = mem[154];
+wire [DATA_WIDTH-1:0] mem_155; assign mem_155 = mem[155];
+wire [DATA_WIDTH-1:0] mem_156; assign mem_156 = mem[156];
+wire [DATA_WIDTH-1:0] mem_157; assign mem_157 = mem[157];
+wire [DATA_WIDTH-1:0] mem_158; assign mem_158 = mem[158];
+wire [DATA_WIDTH-1:0] mem_159; assign mem_159 = mem[159];
+wire [DATA_WIDTH-1:0] mem_160; assign mem_160 = mem[160];
+wire [DATA_WIDTH-1:0] mem_161; assign mem_161 = mem[161];
+wire [DATA_WIDTH-1:0] mem_162; assign mem_162 = mem[162];
+wire [DATA_WIDTH-1:0] mem_163; assign mem_163 = mem[163];
+wire [DATA_WIDTH-1:0] mem_164; assign mem_164 = mem[164];
+wire [DATA_WIDTH-1:0] mem_165; assign mem_165 = mem[165];
+wire [DATA_WIDTH-1:0] mem_166; assign mem_166 = mem[166];
+wire [DATA_WIDTH-1:0] mem_167; assign mem_167 = mem[167];
+wire [DATA_WIDTH-1:0] mem_168; assign mem_168 = mem[168];
+wire [DATA_WIDTH-1:0] mem_169; assign mem_169 = mem[169];
+wire [DATA_WIDTH-1:0] mem_170; assign mem_170 = mem[170];
+wire [DATA_WIDTH-1:0] mem_171; assign mem_171 = mem[171];
+wire [DATA_WIDTH-1:0] mem_172; assign mem_172 = mem[172];
+wire [DATA_WIDTH-1:0] mem_173; assign mem_173 = mem[173];
+wire [DATA_WIDTH-1:0] mem_174; assign mem_174 = mem[174];
+wire [DATA_WIDTH-1:0] mem_175; assign mem_175 = mem[175];
+wire [DATA_WIDTH-1:0] mem_176; assign mem_176 = mem[176];
+wire [DATA_WIDTH-1:0] mem_177; assign mem_177 = mem[177];
+wire [DATA_WIDTH-1:0] mem_178; assign mem_178 = mem[178];
+wire [DATA_WIDTH-1:0] mem_179; assign mem_179 = mem[179];
+wire [DATA_WIDTH-1:0] mem_180; assign mem_180 = mem[180];
+wire [DATA_WIDTH-1:0] mem_181; assign mem_181 = mem[181];
+wire [DATA_WIDTH-1:0] mem_182; assign mem_182 = mem[182];
+wire [DATA_WIDTH-1:0] mem_183; assign mem_183 = mem[183];
+wire [DATA_WIDTH-1:0] mem_184; assign mem_184 = mem[184];
+wire [DATA_WIDTH-1:0] mem_185; assign mem_185 = mem[185];
+wire [DATA_WIDTH-1:0] mem_186; assign mem_186 = mem[186];
+wire [DATA_WIDTH-1:0] mem_187; assign mem_187 = mem[187];
+wire [DATA_WIDTH-1:0] mem_188; assign mem_188 = mem[188];
+wire [DATA_WIDTH-1:0] mem_189; assign mem_189 = mem[189];
+wire [DATA_WIDTH-1:0] mem_190; assign mem_190 = mem[190];
+wire [DATA_WIDTH-1:0] mem_191; assign mem_191 = mem[191];
+wire [DATA_WIDTH-1:0] mem_192; assign mem_192 = mem[192];
+wire [DATA_WIDTH-1:0] mem_193; assign mem_193 = mem[193];
+wire [DATA_WIDTH-1:0] mem_194; assign mem_194 = mem[194];
+wire [DATA_WIDTH-1:0] mem_195; assign mem_195 = mem[195];
+wire [DATA_WIDTH-1:0] mem_196; assign mem_196 = mem[196];
+wire [DATA_WIDTH-1:0] mem_197; assign mem_197 = mem[197];
+wire [DATA_WIDTH-1:0] mem_198; assign mem_198 = mem[198];
+wire [DATA_WIDTH-1:0] mem_199; assign mem_199 = mem[199];
+wire [DATA_WIDTH-1:0] mem_200; assign mem_200 = mem[200];
+wire [DATA_WIDTH-1:0] mem_201; assign mem_201 = mem[201];
+wire [DATA_WIDTH-1:0] mem_202; assign mem_202 = mem[202];
+wire [DATA_WIDTH-1:0] mem_203; assign mem_203 = mem[203];
+wire [DATA_WIDTH-1:0] mem_204; assign mem_204 = mem[204];
+wire [DATA_WIDTH-1:0] mem_205; assign mem_205 = mem[205];
+wire [DATA_WIDTH-1:0] mem_206; assign mem_206 = mem[206];
+wire [DATA_WIDTH-1:0] mem_207; assign mem_207 = mem[207];
+wire [DATA_WIDTH-1:0] mem_208; assign mem_208 = mem[208];
+wire [DATA_WIDTH-1:0] mem_209; assign mem_209 = mem[209];
+wire [DATA_WIDTH-1:0] mem_210; assign mem_210 = mem[210];
+wire [DATA_WIDTH-1:0] mem_211; assign mem_211 = mem[211];
+wire [DATA_WIDTH-1:0] mem_212; assign mem_212 = mem[212];
+wire [DATA_WIDTH-1:0] mem_213; assign mem_213 = mem[213];
+wire [DATA_WIDTH-1:0] mem_214; assign mem_214 = mem[214];
+wire [DATA_WIDTH-1:0] mem_215; assign mem_215 = mem[215];
+wire [DATA_WIDTH-1:0] mem_216; assign mem_216 = mem[216];
+wire [DATA_WIDTH-1:0] mem_217; assign mem_217 = mem[217];
+wire [DATA_WIDTH-1:0] mem_218; assign mem_218 = mem[218];
+wire [DATA_WIDTH-1:0] mem_219; assign mem_219 = mem[219];
+wire [DATA_WIDTH-1:0] mem_220; assign mem_220 = mem[220];
+wire [DATA_WIDTH-1:0] mem_221; assign mem_221 = mem[221];
+wire [DATA_WIDTH-1:0] mem_222; assign mem_222 = mem[222];
+wire [DATA_WIDTH-1:0] mem_223; assign mem_223 = mem[223];
+wire [DATA_WIDTH-1:0] mem_224; assign mem_224 = mem[224];
+wire [DATA_WIDTH-1:0] mem_225; assign mem_225 = mem[225];
+wire [DATA_WIDTH-1:0] mem_226; assign mem_226 = mem[226];
+wire [DATA_WIDTH-1:0] mem_227; assign mem_227 = mem[227];
+wire [DATA_WIDTH-1:0] mem_228; assign mem_228 = mem[228];
+wire [DATA_WIDTH-1:0] mem_229; assign mem_229 = mem[229];
+wire [DATA_WIDTH-1:0] mem_230; assign mem_230 = mem[230];
+wire [DATA_WIDTH-1:0] mem_231; assign mem_231 = mem[231];
+wire [DATA_WIDTH-1:0] mem_232; assign mem_232 = mem[232];
+wire [DATA_WIDTH-1:0] mem_233; assign mem_233 = mem[233];
+wire [DATA_WIDTH-1:0] mem_234; assign mem_234 = mem[234];
+wire [DATA_WIDTH-1:0] mem_235; assign mem_235 = mem[235];
+wire [DATA_WIDTH-1:0] mem_236; assign mem_236 = mem[236];
+wire [DATA_WIDTH-1:0] mem_237; assign mem_237 = mem[237];
+wire [DATA_WIDTH-1:0] mem_238; assign mem_238 = mem[238];
+wire [DATA_WIDTH-1:0] mem_239; assign mem_239 = mem[239];
+wire [DATA_WIDTH-1:0] mem_240; assign mem_240 = mem[240];
+wire [DATA_WIDTH-1:0] mem_241; assign mem_241 = mem[241];
+wire [DATA_WIDTH-1:0] mem_242; assign mem_242 = mem[242];
+wire [DATA_WIDTH-1:0] mem_243; assign mem_243 = mem[243];
+wire [DATA_WIDTH-1:0] mem_244; assign mem_244 = mem[244];
+wire [DATA_WIDTH-1:0] mem_245; assign mem_245 = mem[245];
+wire [DATA_WIDTH-1:0] mem_246; assign mem_246 = mem[246];
+wire [DATA_WIDTH-1:0] mem_247; assign mem_247 = mem[247];
+wire [DATA_WIDTH-1:0] mem_248; assign mem_248 = mem[248];
+wire [DATA_WIDTH-1:0] mem_249; assign mem_249 = mem[249];
+wire [DATA_WIDTH-1:0] mem_250; assign mem_250 = mem[250];
+wire [DATA_WIDTH-1:0] mem_251; assign mem_251 = mem[251];
+wire [DATA_WIDTH-1:0] mem_252; assign mem_252 = mem[252];
+wire [DATA_WIDTH-1:0] mem_253; assign mem_253 = mem[253];
+wire [DATA_WIDTH-1:0] mem_254; assign mem_254 = mem[254];
+wire [DATA_WIDTH-1:0] mem_255; assign mem_255 = mem[255];
+wire [DATA_WIDTH-1:0] mem_256; assign mem_256 = mem[256];
+wire [DATA_WIDTH-1:0] mem_257; assign mem_257 = mem[257];
+wire [DATA_WIDTH-1:0] mem_258; assign mem_258 = mem[258];
+wire [DATA_WIDTH-1:0] mem_259; assign mem_259 = mem[259];
+wire [DATA_WIDTH-1:0] mem_260; assign mem_260 = mem[260];
+wire [DATA_WIDTH-1:0] mem_261; assign mem_261 = mem[261];
+wire [DATA_WIDTH-1:0] mem_262; assign mem_262 = mem[262];
+wire [DATA_WIDTH-1:0] mem_263; assign mem_263 = mem[263];
+wire [DATA_WIDTH-1:0] mem_264; assign mem_264 = mem[264];
+wire [DATA_WIDTH-1:0] mem_265; assign mem_265 = mem[265];
+wire [DATA_WIDTH-1:0] mem_266; assign mem_266 = mem[266];
+wire [DATA_WIDTH-1:0] mem_267; assign mem_267 = mem[267];
+wire [DATA_WIDTH-1:0] mem_268; assign mem_268 = mem[268];
+wire [DATA_WIDTH-1:0] mem_269; assign mem_269 = mem[269];
+wire [DATA_WIDTH-1:0] mem_270; assign mem_270 = mem[270];
+wire [DATA_WIDTH-1:0] mem_271; assign mem_271 = mem[271];
+wire [DATA_WIDTH-1:0] mem_272; assign mem_272 = mem[272];
+wire [DATA_WIDTH-1:0] mem_273; assign mem_273 = mem[273];
+wire [DATA_WIDTH-1:0] mem_274; assign mem_274 = mem[274];
+wire [DATA_WIDTH-1:0] mem_275; assign mem_275 = mem[275];
+wire [DATA_WIDTH-1:0] mem_276; assign mem_276 = mem[276];
+wire [DATA_WIDTH-1:0] mem_277; assign mem_277 = mem[277];
+wire [DATA_WIDTH-1:0] mem_278; assign mem_278 = mem[278];
+wire [DATA_WIDTH-1:0] mem_279; assign mem_279 = mem[279];
+wire [DATA_WIDTH-1:0] mem_280; assign mem_280 = mem[280];
+wire [DATA_WIDTH-1:0] mem_281; assign mem_281 = mem[281];
+wire [DATA_WIDTH-1:0] mem_282; assign mem_282 = mem[282];
+wire [DATA_WIDTH-1:0] mem_283; assign mem_283 = mem[283];
+wire [DATA_WIDTH-1:0] mem_284; assign mem_284 = mem[284];
+wire [DATA_WIDTH-1:0] mem_285; assign mem_285 = mem[285];
+wire [DATA_WIDTH-1:0] mem_286; assign mem_286 = mem[286];
+wire [DATA_WIDTH-1:0] mem_287; assign mem_287 = mem[287];
+wire [DATA_WIDTH-1:0] mem_288; assign mem_288 = mem[288];
+wire [DATA_WIDTH-1:0] mem_289; assign mem_289 = mem[289];
+wire [DATA_WIDTH-1:0] mem_290; assign mem_290 = mem[290];
+wire [DATA_WIDTH-1:0] mem_291; assign mem_291 = mem[291];
+wire [DATA_WIDTH-1:0] mem_292; assign mem_292 = mem[292];
+wire [DATA_WIDTH-1:0] mem_293; assign mem_293 = mem[293];
+wire [DATA_WIDTH-1:0] mem_294; assign mem_294 = mem[294];
+wire [DATA_WIDTH-1:0] mem_295; assign mem_295 = mem[295];
+wire [DATA_WIDTH-1:0] mem_296; assign mem_296 = mem[296];
+wire [DATA_WIDTH-1:0] mem_297; assign mem_297 = mem[297];
+wire [DATA_WIDTH-1:0] mem_298; assign mem_298 = mem[298];
+wire [DATA_WIDTH-1:0] mem_299; assign mem_299 = mem[299];
+wire [DATA_WIDTH-1:0] mem_300; assign mem_300 = mem[300];
+wire [DATA_WIDTH-1:0] mem_301; assign mem_301 = mem[301];
+wire [DATA_WIDTH-1:0] mem_302; assign mem_302 = mem[302];
+wire [DATA_WIDTH-1:0] mem_303; assign mem_303 = mem[303];
+wire [DATA_WIDTH-1:0] mem_304; assign mem_304 = mem[304];
+wire [DATA_WIDTH-1:0] mem_305; assign mem_305 = mem[305];
+wire [DATA_WIDTH-1:0] mem_306; assign mem_306 = mem[306];
+wire [DATA_WIDTH-1:0] mem_307; assign mem_307 = mem[307];
+wire [DATA_WIDTH-1:0] mem_308; assign mem_308 = mem[308];
+wire [DATA_WIDTH-1:0] mem_309; assign mem_309 = mem[309];
+wire [DATA_WIDTH-1:0] mem_310; assign mem_310 = mem[310];
+wire [DATA_WIDTH-1:0] mem_311; assign mem_311 = mem[311];
+wire [DATA_WIDTH-1:0] mem_312; assign mem_312 = mem[312];
+wire [DATA_WIDTH-1:0] mem_313; assign mem_313 = mem[313];
+wire [DATA_WIDTH-1:0] mem_314; assign mem_314 = mem[314];
+wire [DATA_WIDTH-1:0] mem_315; assign mem_315 = mem[315];
+wire [DATA_WIDTH-1:0] mem_316; assign mem_316 = mem[316];
+wire [DATA_WIDTH-1:0] mem_317; assign mem_317 = mem[317];
+wire [DATA_WIDTH-1:0] mem_318; assign mem_318 = mem[318];
+wire [DATA_WIDTH-1:0] mem_319; assign mem_319 = mem[319];
+
 
 
 always @* begin

@@ -23,9 +23,10 @@ module swizzle_dram_to_cram(
   //interface to the compute ram - data goes out
   input      [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_start_addr,
   output     [`RAM_PORT_DWIDTH-1:0] ram_data_out,
-  output reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr,
-  output reg                        ram_we,
-  output      ready
+  output     [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr,
+  output                            ram_we,
+  output      ready,
+  input       dma_mode
 );
 
 //when direction_of_dataflow is 0, that means
@@ -45,50 +46,6 @@ reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter;
 reg [`LOG_COUNT_TO_SWITCH_BUFFERS*2-1:0] out_data_counter_snap;
 reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_start_addr_int;
       
-/*
-reg first_time_wait;
-reg last_part;
-
-always @(posedge clk) begin
-  if (~resetn) begin
-    in_data_counter  <= 0;
-    out_data_counter  <= 0;
-    ram_we <= 0;
-    direction_of_dataflow <= 0;
-    first_time_wait <= 0;
-    last_part <= 0;
-  end 
-  else if (data_valid || last_part) begin
-    if (~last_part) begin
-      in_data_counter <= in_data_counter + 1;
-    end
-    if (first_time_wait) begin
-      ram_we <= 1'b1;
-      out_data_counter <= out_data_counter + 1;
-	    ram_addr <= ram_addr + 1;
-    end
-    if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS)) begin
-      direction_of_dataflow <= ~direction_of_dataflow;
-    end
-    if (out_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS)) begin
-      out_data_counter <= 0;
-    end
-    if (in_data_counter==(2*`COUNT_TO_SWITCH_BUFFERS)) begin
-      direction_of_dataflow <= ~direction_of_dataflow;
-      in_data_counter <= 0;
-    end
-    if (in_data_counter==(`COUNT_TO_SWITCH_BUFFERS-1)) begin
-      first_time_wait <= 1;
-      ram_we <= 1'b1;
-      ram_addr <= ram_start_addr-1;
-      out_data_counter <= out_data_counter+1;
-    end
-    if (((in_data_counter-out_data_counter)<(`COUNT_TO_SWITCH_BUFFERS-1)) && ((in_data_counter-out_data_counter)!=0)) begin
-      last_part <= 1;
-    end
-  end    
-end
-*/
 
 reg flushed;
 reg [1:0] write_state;
@@ -141,15 +98,19 @@ reg out_valid_internal;
 reg mem_ctrl_data_last_delayed;
 reg data_valid_delayed;
 reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr_int;
+reg [`RAM_PORT_AWIDTH+`LOG_NUM_CRAMS-1:0] ram_addr_temp;
 reg ram_we_int;
+reg ram_we_temp;
 
-
+//We need slightly different signaling in DMA mode
+assign ram_addr = dma_mode ? ram_addr_int : ram_addr_temp;
+assign ram_we   = dma_mode ? ram_we_int   : ram_we_temp;
 
 always @(posedge clk) begin
   mem_ctrl_data_last_delayed <= mem_ctrl_data_last;
   data_valid_delayed <= data_valid;
-  ram_addr <= ram_addr_int;
-  ram_we <= ram_we_int;
+  ram_addr_temp <= ram_addr_int;
+  ram_we_temp <= ram_we_int;
 end
 
 always @(posedge clk) begin
@@ -185,6 +146,12 @@ always @(posedge clk) begin
           ram_start_addr_int <= ram_start_addr_int+1;
           out_data_counter <= out_data_counter+1;
           out_data_counter_snap <= out_data_counter+1;
+          if (dma_mode) begin
+            out_valid_internal <= 1;
+          end
+          else begin
+            out_valid_internal <= 0;
+          end
         end
         else if (data_valid) begin
           read_state <= 1;

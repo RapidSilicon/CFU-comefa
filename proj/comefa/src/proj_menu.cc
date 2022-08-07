@@ -47,24 +47,77 @@ void do_exercise_cfu_op0(void) {
 
 void do_exercise_cfu_op2_load(void) {
   puts("\nExercise CFU Op2 aka load (dram->comefa) using DMA\n");
-  int cfu;
-  cfu = cfu_op2(0, 0, 0); //funct7==0 means read
-  printf("Triggered DMA read\n");
+
+  //Say, we want the data to be located at row address 0.
+  unsigned int row_addr = 0; //we increment in the loop
+  unsigned int ram_addr = row_addr<<2;     //need to shift left by 2 to get from row address
+                                           //to normal addr coz the column muxing factor is 4.
+  
+  int cfu = 0;
   do {
-    cfu = cfu_op2(1, 0, 0); //set funct7 to 1 to indicate we are checking for readyness
+    cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
   } while (cfu==0); //cfu will be 1 when ready
-  printf("DMA read finished\n");
+  printf("CFU is ready to accept data from dram");
+
+  for (unsigned int i = 0; i < 1; i += 1) {
+      if ((i>0) && (i%4==0)) {
+        ram_addr = ram_addr + (1<<9); //the 1<<9 is to change the higher order bits
+                                      //that decide which RAM the data goes to. 
+                                      //after every 160 columns, we want to move to
+                                      //the next ram.
+      }
+
+      //We send the row address in the upper part of the data (bits 47:41).
+      //need to shift left by 8 to get to bit 
+      //position 40 in the concatenated {higher,lower} value.
+      unsigned int higher = ram_addr<<8; 
+
+
+      cfu = cfu_op2(0, 0, higher); //funct7==0 means read
+      printf("Triggered DMA read\n");
+      do {
+        cfu = cfu_op2(1, 0, 0); //set funct7 to 1 to indicate we are checking for readyness
+      } while (cfu==0); //cfu will be 1 when ready
+      printf("DMA read finished\n");
+
+      //after that wait for readyness
+      do {
+        cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
+      } while (cfu==0); //cfu will be 1 when ready
+      printf("Swizzle logic has been flushed\n");
+
+  }
+
 }
 
 void do_exercise_cfu_op2_store(void) {
   puts("\nExercise CFU Op2 aka store (comefa->dram) using DMA\n");
-  int cfu;
-  cfu = cfu_op2(2, 0, 0); //funct7==2 means write
-  printf("Triggered DMA write\n");
-  do {
-    cfu = cfu_op2(3, 0, 0); //set funct7 to 3 to indicate we are checking for readyness
-  } while (cfu==0); //cfu will be 1 when ready
-  printf("DMA write finished\n");
+  int num_elements_to_read = 160; //160 elements in 1 RAM
+
+  //Results are available in row 80
+  unsigned int row_addr = 80;   //7 bits (6:0)
+  unsigned int ram_addr = row_addr<<2;  //need to shift left by 2 to get from row address
+                                        //to normal addr coz the column muxing factor is 4.
+                                        //total = 9 bits (8:0)
+
+  for (int i = 0; i < 1; i += 1) {
+
+    if ((i>0) && (i%4==0)) {
+      ram_addr = ram_addr + (1<<9); //the <<9 is to change the higher order bits
+                              //that decide which RAM the data goes to. 
+                              //after every 160 columns, we want to move to
+                              //the next ram.
+    }
+
+    int cfu = 0;
+    cfu = cfu_op2(2, ram_addr, num_elements_to_read); //funct7==2 means write
+    printf("Triggered DMA write\n");
+
+    do {
+      cfu = cfu_op2(3, 0, 0); //set funct7 to 3 to indicate we are checking for readyness
+    } while (cfu==0); //cfu will be 1 when ready
+    printf("DMA write finished\n");
+  }
 }
 
 /*
@@ -332,8 +385,8 @@ struct Menu MENU = {
         MENU_ITEM('0', "exercise cfu op0 - reset and test", do_exercise_cfu_op0),
         MENU_ITEM('2', "exercise cfu op2 - load (dram->comefa) using dma", do_exercise_cfu_op2_load),
         MENU_ITEM('3', "exercise cfu op3 - store (comefa->dram) using dma", do_exercise_cfu_op2_store),
-        MENU_ITEM('5', "exercise cfu op5 - write comefa", do_exercise_cfu_op5),
-        MENU_ITEM('6', "exercise cfu op6 - read comefa", do_exercise_cfu_op6),
+        MENU_ITEM('5', "exercise cfu op5 - write comefa (cpu->comefa)", do_exercise_cfu_op5),
+        MENU_ITEM('6', "exercise cfu op6 - read comefa (comefa->cpu)", do_exercise_cfu_op6),
         MENU_ITEM('7', "exercise cfu op7 - start execution", do_exercise_cfu_op7_start),
         MENU_ITEM('8', "exercise cfu op8 - check status of execution", do_exercise_cfu_op7_check),
         MENU_ITEM('9', "exercise cfu op9 - set registers", do_exercise_cfu_op7_write_rf),
