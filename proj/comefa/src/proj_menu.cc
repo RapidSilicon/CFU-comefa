@@ -53,36 +53,37 @@ void do_exercise_cfu_op2_load(void) {
   unsigned int ram_addr = row_addr<<2;     //need to shift left by 2 to get from row address
                                            //to normal addr coz the column muxing factor is 4.
   
+  unsigned short dram_addr_to_read = 0;
+  unsigned short dram_data_bytes_to_read = 160*8; //Only support this for now
+
   int cfu = 0;
   do {
-    cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
+    cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness of swizzle logic
   } while (cfu==0); //cfu will be 1 when ready
-  printf("CFU is ready to accept data from dram");
+  printf("CFU swizzle logic is ready to accept data from dram\n");
 
-  for (unsigned int i = 0; i < 1; i += 1) {
-      if ((i>0) && (i%4==0)) {
+  for (unsigned int i = 0; i < 4; i += 1) {
+      if (i>0) {
         ram_addr = ram_addr + (1<<9); //the 1<<9 is to change the higher order bits
                                       //that decide which RAM the data goes to. 
                                       //after every 160 columns, we want to move to
                                       //the next ram.
+        dram_addr_to_read = 0; //Technically the data for the next CRAM will
+                               //be present at a different location in the DRAM
+                               //But right now, we are just repeating the data.
       }
 
-      //We send the row address in the upper part of the data (bits 47:41).
-      //need to shift left by 8 to get to bit 
-      //position 40 in the concatenated {higher,lower} value.
-      unsigned int higher = ram_addr<<8; 
-
-
-      cfu = cfu_op2(0, 0, higher); //funct7==0 means read
+      
+      cfu = cfu_op2(0, ((dram_data_bytes_to_read<<16)|dram_addr_to_read) , ram_addr); //funct7==0 means read
       printf("Triggered DMA read\n");
       do {
-        cfu = cfu_op2(1, 0, 0); //set funct7 to 1 to indicate we are checking for readyness
-      } while (cfu==0); //cfu will be 1 when ready
+        cfu = cfu_op2(1, 0, 0); //set funct7 to 1 to indicate we are checking for DMA done
+      } while (cfu==0); //cfu will be 1 when done
       printf("DMA read finished\n");
 
       //after that wait for readyness
       do {
-        cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness
+        cfu = cfu_op5(2, 0, 0); //set funct7 to 2 to indicate we are checking for readyness of swizzle logic
       } while (cfu==0); //cfu will be 1 when ready
       printf("Swizzle logic has been flushed\n");
 
@@ -100,17 +101,20 @@ void do_exercise_cfu_op2_store(void) {
                                         //to normal addr coz the column muxing factor is 4.
                                         //total = 9 bits (8:0)
 
-  for (int i = 0; i < 1; i += 1) {
+  unsigned short dram_addr_to_write = 0;
 
-    if ((i>0) && (i%4==0)) {
+  for (int i = 0; i < 4; i += 1) {
+
+    if (i>0) {
       ram_addr = ram_addr + (1<<9); //the <<9 is to change the higher order bits
                               //that decide which RAM the data goes to. 
                               //after every 160 columns, we want to move to
                               //the next ram.
+      dram_addr_to_write =  dram_addr_to_write + (num_elements_to_read<<3); //8-byte aligned address
     }
 
     int cfu = 0;
-    cfu = cfu_op2(2, ram_addr, num_elements_to_read); //funct7==2 means write
+    cfu = cfu_op2(2, (ram_addr<<16) | num_elements_to_read, dram_addr_to_write); //funct7==2 means write
     printf("Triggered DMA write\n");
 
     do {

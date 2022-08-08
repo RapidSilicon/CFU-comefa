@@ -1,7 +1,7 @@
 //Assumption: Currently the design works properly only if
 //MEM_CTRL_DWIDTH == RAM_PORT_DWIDTH
 `define MEM_CTRL_DWIDTH 40
-`define MEM_CTRL_AWIDTH 9
+`define MEM_CTRL_AWIDTH 16
 `define RAM_PORT_DWIDTH 40
 `define RAM_PORT_AWIDTH 9
 `define NUM_BUFFERS     80
